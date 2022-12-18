@@ -22,6 +22,7 @@ class Main:
         self.menu = Menu()
         self.gui = GUI()
         self.camera = Camera()
+        self.pers = Human()
         self.mode = 0
         self.info = []
 
@@ -31,7 +32,6 @@ class Main:
         if self.mode == 1:
             self.map.update()
             self.camera.update()
-            self.pers = Human()
             self.pers.update()
         # print(self.mode)
 
@@ -54,7 +54,7 @@ class Map:
 
     def update(self):
         self.render()
-        game.camera.move(1, 1)
+        # game.camera.move(1, 1)
 
     def render(self):
         camerax, cameray = game.camera.cam_x, game.camera.cam_y
@@ -102,12 +102,12 @@ class Object:
 class Pawn:
     def __init__(self):
         self.x, self.y = 0, 0
+        pygame.sprite.Sprite.__init__(self)
         self.group = pygame.sprite.Group()
-        # self.group.add(self)
+        self.group.add(self)
         self.controls_num = 0
-
-    def update(self):
-        self.events_check()
+        self.horizontal_speed = 3
+        self.vertical_speed = 10
 
     def events_check(self):
         keyboard = pygame.key.get_pressed()
@@ -118,18 +118,36 @@ class Pawn:
                 keys.append(i)
         self.control(keys)
 
-    def control(self, keys):
-        pass
+    def physics(self):
+        ...
 
 
 class Human(Pawn, pygame.sprite.Sprite):
     def __init__(self):
         super(Human, self).__init__()
-        # self.image = pg.image.load(ASSETS_PATH + 'Static/Human/idle1.png')
-        self.runanimation = [ASSETS_PATH]
+        animpath = ASSETS_PATH + 'Sprites/Animations/running_1/'
+        self.image = pg.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')
+        self.rect = self.image.get_rect()
+        self.runanimation = [animpath + f'{i}.png' for i in range(1, 7)]
+        self.moves = []
+        print(self.runanimation)
+
+    def update(self):
+        self.events_check()
+        self.group.draw(screen)
 
     def control(self, keys):
-        print(keys)
+        if 0 in keys:
+            pass
+        if 1 in keys:
+            pass
+        if 2 in keys:
+            pass
+        if 3 in keys:
+            pass
+        if 4 in keys:
+            pass
+
 
 game = Main()
 
