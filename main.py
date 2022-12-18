@@ -12,6 +12,8 @@ FPS = 60
 running = True
 clock = pg.time.Clock()
 screen = pg.display.set_mode((WIDTH, HEIGHT))
+ASSETS_PATH = 'Assets/'
+controls = [[pg.K_w, pg.K_d, pg.K_s, pg.K_a, pg.K_SPACE, pg.KMOD_SHIFT]]
 
 
 class Main:
@@ -29,6 +31,8 @@ class Main:
         if self.mode == 1:
             self.map.update()
             self.camera.update()
+            self.pers = Human()
+            self.pers.update()
         # print(self.mode)
 
 
@@ -79,10 +83,11 @@ class Camera:
         print('camera initialized')
 
     def update(self):
-        print(self.cam_x, self.cam_y)
+        pass
+        # print(self.cam_x, self.cam_y)
 
     def move(self, x, y):
-        if self.cam_x >= game.map.size[0]-WIDTH or self.cam_y >= game.map.size[1]-HEIGHT:
+        if self.cam_x >= game.map.size[0] - WIDTH or self.cam_y >= game.map.size[1] - HEIGHT:
             print('граница камеры')
         else:
             self.cam_x += x
@@ -96,13 +101,35 @@ class Object:
 
 class Pawn:
     def __init__(self):
-        print('self')
+        self.x, self.y = 0, 0
+        self.group = pygame.sprite.Group()
+        # self.group.add(self)
+        self.controls_num = 0
+
+    def update(self):
+        self.events_check()
+
+    def events_check(self):
+        keyboard = pygame.key.get_pressed()
+        keys = []
+        for i in range(len(controls[self.controls_num])):
+            x = controls[self.controls_num][i]
+            if keyboard[x]:
+                keys.append(i)
+        self.control(keys)
+
+    def control(self, keys):
+        pass
 
 
 class Human(Pawn, pygame.sprite.Sprite):
     def __init__(self):
         super(Human, self).__init__()
+        # self.image = pg.image.load(ASSETS_PATH + 'Static/Human/idle1.png')
+        self.runanimation = [ASSETS_PATH]
 
+    def control(self, keys):
+        print(keys)
 
 game = Main()
 
