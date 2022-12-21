@@ -157,11 +157,16 @@ class Pawn:
         t = self.rect.top
         visible_area = game.map.visible_area
         print(visible_area[self.rect.x, self.rect.y]) if visible_area[self.rect.x, self.rect.y] else 0
-        left = any([visible_area[x2 - 1, i] for i in range(y2, y2 + h)])
-        right = any([visible_area[x2 + w + 1, i] for i in range(y2, y2 + h)])
-        top = any([visible_area[i, y2 - 1] for i in range(x2, x2 + w)])
-        bottom = any([visible_area[i, y2 + h + 1] for i in range(x2, x2 + w)])
-
+        for j in range(1, abs(x) + 1):
+            left = any([visible_area[x2 - j, i] for i in range(y2, y2 + h)])
+            right = any([visible_area[x2 + w + j, i] for i in range(y2, y2 + h)])
+            if left or right:
+                break
+        for j in range(1, abs(y) + 1):
+            top = any([visible_area[i, y2 - j] for i in range(x2, x2 + w)])
+            bottom = any([visible_area[i, y2 + h + j] for i in range(x2, x2 + w)])
+            if top or bottom:
+                break
         if (x < 0 and not left) or (x > 0 and not right):
             self.x += x
         if (y < 0 and not top) or (y > 0 and not bottom):
@@ -257,7 +262,7 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.group.draw(screen)
 
     def control(self, keys):
-        speed = 1
+        speed = 5
         if 0 in keys:
             self.move(0, -speed)
         if 2 in keys:
