@@ -14,7 +14,7 @@ clock = pg.time.Clock()
 screen = pg.display.set_mode((WIDTH, HEIGHT))
 ASSETS_PATH = 'Assets/'
 controls = [[pg.K_w, pg.K_d, pg.K_s, pg.K_a, pg.K_SPACE, pg.KMOD_SHIFT]]
-G = 2
+G = 1
 
 
 class Main:
@@ -147,6 +147,7 @@ class Pawn:
         self.lascoords = (None, None)
         self.cam_xlock, self.cam_ylock = 0, 0
         self.xcamflg, self.ycamflg = 0, 0
+        self.left, self.right, self.top, self.bottom = 0, 0, 0, 0
 
     def move(self, x, y):
         x2 = self.rect.x
@@ -158,18 +159,18 @@ class Pawn:
         visible_area = game.map.visible_area
         print(visible_area[self.rect.x, self.rect.y]) if visible_area[self.rect.x, self.rect.y] else 0
         for j in range(1, abs(x) + 1):
-            left = any([visible_area[x2 - j, i] for i in range(y2, y2 + h)])
-            right = any([visible_area[x2 + w + j, i] for i in range(y2, y2 + h)])
-            if left or right:
+            self.left = any([visible_area[x2 - j, i] for i in range(y2, y2 + h)])
+            self.right = any([visible_area[x2 + w + j, i] for i in range(y2, y2 + h)])
+            if self.left or self.right:
                 break
         for j in range(1, abs(y) + 1):
-            top = any([visible_area[i, y2 - j] for i in range(x2, x2 + w)])
-            bottom = any([visible_area[i, y2 + h + j] for i in range(x2, x2 + w)])
-            if top or bottom:
+            self.top = any([visible_area[i, y2 - j] for i in range(x2, x2 + w)])
+            self.bottom = any([visible_area[i, y2 + h + j] for i in range(x2, x2 + w)])
+            if self.top or self.bottom:
                 break
-        if (x < 0 and not left) or (x > 0 and not right):
+        if (x < 0 and not self.left) or (x > 0 and not self.right):
             self.x += x
-        if (y < 0 and not top) or (y > 0 and not bottom):
+        if (y < 0 and not self.top) or (y > 0 and not self.bottom):
             self.y += y
 
     def cam_targeting(self):
@@ -230,18 +231,14 @@ class Pawn:
         return self.flags'''
 
     def physics(self):
-        self.y += self.vertical_speed
-        self.x += self.horizontal_speed
-        y2 = self.rect.bottom
-        self.onfloor = self.flags[1]
-        print(self.onfloor)
+        self.move(self.horizontal_speed, self.vertical_speed)
+        self.onfloor = self.bottom
         if self.onfloor:
             self.grav_accel = G
             self.vertical_speed = 0
         else:
             # self.grav_accel += G
-            # self.vertical_speed += self.grav_accel
-            ...
+            self.vertical_speed += self.grav_accel
 
 
 class Human(Pawn, pygame.sprite.Sprite):
@@ -257,20 +254,23 @@ class Human(Pawn, pygame.sprite.Sprite):
     def update(self):
         self.cam_targeting()
         self.events_check()
-        # self.physics()
+        self.physics()
         # self.rect.x, self.rect.y = self.x, self.y
         self.group.draw(screen)
 
     def control(self, keys):
         speed = 5
-        if 0 in keys:
+        '''if 0 in keys:
             self.move(0, -speed)
         if 2 in keys:
-            self.move(0, speed)
+            self.move(0, speed)'''
         if 1 in keys:
             self.move(speed, 0)
         if 3 in keys:
             self.move(-speed, 0)
+        if 4 in keys:
+            print('jump')
+            self.vertical_speed += -10
 
 
 game = Main()
