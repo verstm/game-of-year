@@ -144,6 +144,7 @@ class Pawn:
         self.vertical_speed = 0
         self.grav_accel = G
         self.onfloor = 0
+        # self.jump_cooldown =
         self.lascoords = (None, None)
         self.cam_xlock, self.cam_ylock = 0, 0
         self.xcamflg, self.ycamflg = 0, 0
@@ -156,22 +157,50 @@ class Pawn:
         h = self.rect.h
         b = self.rect.bottom
         t = self.rect.top
+        flg = 0
+        lastx, lasty = 0, 0
         visible_area = game.map.visible_area
         print(visible_area[self.rect.x, self.rect.y]) if visible_area[self.rect.x, self.rect.y] else 0
         for j in range(1, abs(x) + 1):
-            self.left = any([visible_area[x2 - j, i] for i in range(y2, y2 + h)])
-            self.right = any([visible_area[x2 + w + j, i] for i in range(y2, y2 + h)])
-            if self.left or self.right:
+            if x2 - j <= 0:
+                self.left = True
+            elif x2 + w + j >= WIDTH:
+                self.right = True
+            else:
+                self.left = any([visible_area[x2 - j, i] for i in range(y2, y2 + h)])
+                self.right = any([visible_area[x2 + w + j, i] for i in range(y2, y2 + h)])
+                flg = 1
+
+            if self.left:
+                lastx = -j
+                break
+            if self.right:
+                lastx = j
                 break
         for j in range(1, abs(y) + 1):
-            self.top = any([visible_area[i, y2 - j] for i in range(x2, x2 + w)])
-            self.bottom = any([visible_area[i, y2 + h + j] for i in range(x2, x2 + w)])
-            if self.top or self.bottom:
+            if y2 - j <= 0:
+                self.top = True
+            if y2 + h + j >= HEIGHT:
+                self.bottom = True
+            else:
+                self.top = any([visible_area[i, y2 - j] for i in range(x2, x2 + w)])
+                self.bottom = any([visible_area[i, y2 + h + j] for i in range(x2, x2 + w)])
+                flg = 1
+            if self.top:
+                lasty = -j
                 break
-        if (x < 0 and not self.left) or (x > 0 and not self.right):
+            if self.bottom:
+                lasty = j
+                break
+
+        if (x < 0 and not self.left) or (x > 0 and not self.right) and WIDTH > self.rect.x + x > 0:
             self.x += x
-        if (y < 0 and not self.top) or (y > 0 and not self.bottom):
+        else:
+            self.x += lastx
+        if (y < 0 and not self.top) or (y > 0 and not self.bottom) and HEIGHT > self.rect.y + y > 0:
             self.y += y
+        else:
+            self.y += lasty
 
     def cam_targeting(self):
         tx, ty = self.truecords
@@ -260,17 +289,17 @@ class Human(Pawn, pygame.sprite.Sprite):
 
     def control(self, keys):
         speed = 5
-        '''if 0 in keys:
+        if 0 in keys:
             self.move(0, -speed)
         if 2 in keys:
-            self.move(0, speed)'''
+            self.move(0, speed)
         if 1 in keys:
             self.move(speed, 0)
         if 3 in keys:
             self.move(-speed, 0)
-        if 4 in keys:
+        if 4 in keys and self.bottom:
             print('jump')
-            self.vertical_speed += -10
+            self.vertical_speed += -30
 
 
 game = Main()
