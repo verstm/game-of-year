@@ -59,7 +59,7 @@ class Map:
 
     def render(self):
         camerax, cameray = game.camera.cam_x, game.camera.cam_y
-        self.visible_area = self.hitboxes[camerax:camerax + int(WIDTH)][cameray:cameray + int(HEIGHT)]
+        self.visible_area = self.hitboxes[camerax:camerax + int(WIDTH), cameray:cameray + int(HEIGHT)]
         self.mapsprite.rect.x = -camerax
         self.mapsprite.rect.y = -cameray
         screen.blit(self.mapsprite.image, self.mapsprite.rect)
@@ -148,12 +148,30 @@ class Pawn:
         self.cam_xlock, self.cam_ylock = 0, 0
         self.xcamflg, self.ycamflg = 0, 0
 
+    def move(self, x, y):
+        x2 = self.rect.x
+        y2 = self.rect.y
+        w = self.rect.w
+        h = self.rect.h
+        b = self.rect.bottom
+        t = self.rect.top
+        visible_area = game.map.visible_area
+        print(visible_area[self.rect.x, self.rect.y]) if visible_area[self.rect.x, self.rect.y] else 0
+        left = any([visible_area[x2 - 1, i] for i in range(y2, y2 + h)])
+        right = any([visible_area[x2 + w + 1, i] for i in range(y2, y2 + h)])
+        top = any([visible_area[i, y2 - 1] for i in range(x2, x2 + w)])
+        bottom = any([visible_area[i, y2 + h + 1] for i in range(x2, x2 + w)])
+
+        if (x < 0 and not left) or (x > 0 and not right):
+            self.x += x
+        if (y < 0 and not top) or (y > 0 and not bottom):
+            self.y += y
+
     def cam_targeting(self):
         tx, ty = self.truecords
         r1, r2 = game.camera.cam_x if self.xcamflg else self.x, game.camera.cam_y if self.ycamflg else self.y
         x = game.camera.set(r1, r2)
         camx, camy = game.camera.cam_x, game.camera.cam_y
-        print(x)
         if x[0] == 1 or self.rect.x > tx:
             self.xcamflg = 1
             self.rect.x = self.x - camx + tx
@@ -162,7 +180,6 @@ class Pawn:
             self.rect.x = self.x - camx + tx
         else:
             self.xcamflg = 0
-            print('nicex')
             # self.rect.x = tx
         if x[1] == 1 or self.rect.y > ty:
             self.ycamflg = 1
@@ -172,7 +189,6 @@ class Pawn:
             self.rect.y = self.y - camy + ty
         else:
             self.ycamflg = 0
-            print('nicey')
             # self.rect.y = ty
 
     def events_check(self):
@@ -184,27 +200,29 @@ class Pawn:
                 keys.append(i)
         self.control(keys)
 
-    def hitboxes_check(self):
+    '''def hitboxes_check(self):
         x = self.rect.x
         y = self.rect.y
-        w = self.rect.width
-        h = self.rect.height
+        w = self.rect.w
+        h = self.rect.h
+        visible_area = game.map.visible_area
         self.flags = [0, 0, 0, 0]
+        print(x, x + w, len(visible_area), len(visible_area[0]))
         for i in range(x, x + w):
-            el_top = game.map.visible_area[i][y]
-            el_bottom = game.map.visible_area[i][y + h]
+            el_top = visible_area[i][y]
+            el_bottom = visible_area[i][y + h]
             if el_top:
                 self.flags[0] = 1
             if el_bottom:
                 self.flags[1] = 1
         for i in range(y, y + h):
-            el_left = game.map.visible_area[x][i]
-            el_right = game.map.visible_area[x + w][i]
+            el_left = visible_area[x][i]
+            el_right = visible_area[x + w][i]
             if el_left:
                 self.flags[2] = 1
             if el_right:
                 self.flags[3] = 1
-        return self.flags
+        return self.flags'''
 
     def physics(self):
         self.y += self.vertical_speed
@@ -217,7 +235,8 @@ class Pawn:
             self.vertical_speed = 0
         else:
             # self.grav_accel += G
-            self.vertical_speed += self.grav_accel
+            # self.vertical_speed += self.grav_accel
+            ...
 
 
 class Human(Pawn, pygame.sprite.Sprite):
@@ -232,23 +251,21 @@ class Human(Pawn, pygame.sprite.Sprite):
 
     def update(self):
         self.cam_targeting()
-        # self.physics()
         self.events_check()
+        # self.physics()
         # self.rect.x, self.rect.y = self.x, self.y
         self.group.draw(screen)
 
     def control(self, keys):
-        h = self.hitboxes_check()
-        print(h)
-        if 0 in keys and not h[0]:
-            self.y -= 5
-        if 2 in keys and not h[1]:
-            self.y += 5
-        if 1 in keys and not h[3]:
-            self.x += 5
-        if 3 in keys and not h[2]:
-            self.x -= 5
-
+        speed = 1
+        if 0 in keys:
+            self.move(0, -speed)
+        if 2 in keys:
+            self.move(0, speed)
+        if 1 in keys:
+            self.move(speed, 0)
+        if 3 in keys:
+            self.move(-speed, 0)
 
 
 game = Main()
