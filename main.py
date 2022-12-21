@@ -169,7 +169,6 @@ class Pawn:
             else:
                 self.left = any([visible_area[x2 - j, i] for i in range(y2, y2 + h)])
                 self.right = any([visible_area[x2 + w + j, i] for i in range(y2, y2 + h)])
-                flg = 1
 
             if self.left:
                 lastx = -j
