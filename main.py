@@ -152,7 +152,7 @@ class Pawn:
         tx, ty = self.truecords
         r1, r2 = game.camera.cam_x if self.xcamflg else self.x, game.camera.cam_y if self.ycamflg else self.y
         x = game.camera.set(r1, r2)
-        camx, camy = game.camera.cam_x, game.camera.cam_x
+        camx, camy = game.camera.cam_x, game.camera.cam_y
         print(x)
         if x[0] == 1 or self.rect.x > tx:
             self.xcamflg = 1
@@ -184,17 +184,33 @@ class Pawn:
                 keys.append(i)
         self.control(keys)
 
+    def hitboxes_check(self):
+        x = self.rect.x
+        y = self.rect.y
+        w = self.rect.width
+        h = self.rect.height
+        self.flags = [0, 0, 0, 0]
+        for i in range(x, x + w):
+            el_top = game.map.visible_area[i][y]
+            el_bottom = game.map.visible_area[i][y + h]
+            if el_top:
+                self.flags[0] = 1
+            if el_bottom:
+                self.flags[1] = 1
+        for i in range(y, y + h):
+            el_left = game.map.visible_area[x][i]
+            el_right = game.map.visible_area[x + w][i]
+            if el_left:
+                self.flags[2] = 1
+            if el_right:
+                self.flags[3] = 1
+        return self.flags
+
     def physics(self):
         self.y += self.vertical_speed
         self.x += self.horizontal_speed
         y2 = self.rect.bottom
-        self.onfloor = 0
-        for x in range(self.rect.bottomleft[0], self.rect.bottomright[0]):
-            for y in range(y2, y2 + self.grav_accel + G):
-                # print(y)
-                if game.map.visible_area[x][y]:
-                    self.onfloor = 1
-                    f = 1
+        self.onfloor = self.flags[1]
         print(self.onfloor)
         if self.onfloor:
             self.grav_accel = G
@@ -222,16 +238,17 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.group.draw(screen)
 
     def control(self, keys):
-        if 0 in keys:
+        h = self.hitboxes_check()
+        print(h)
+        if 0 in keys and not h[0]:
             self.y -= 5
-        if 1 in keys:
-            self.x += 5
-        if 2 in keys:
+        if 2 in keys and not h[1]:
             self.y += 5
-        if 3 in keys:
+        if 1 in keys and not h[3]:
+            self.x += 5
+        if 3 in keys and not h[2]:
             self.x -= 5
-        if 4 in keys:
-            pass
+
 
 
 game = Main()
