@@ -142,39 +142,42 @@ class Pawn:
         self.controls_num = 0
         self.horizontal_speed = 0
         self.vertical_speed = 0
+        self.jump_power = 3
         self.grav_accel = G
         self.onfloor = 0
         # self.jump_cooldown =
+        self.jumpflg = 0
         self.lascoords = (None, None)
         self.cam_xlock, self.cam_ylock = 0, 0
         self.xcamflg, self.ycamflg = 0, 0
         self.left, self.right, self.top, self.bottom = 0, 0, 0, 0
 
     def move(self, x, y):
+        # print(x, y)
         x2 = self.rect.x
         y2 = self.rect.y
         w = self.rect.w
         h = self.rect.h
         b = self.rect.bottom
         t = self.rect.top
-        flg = 0
         lastx, lasty = 0, 0
+        flg = 0
         visible_area = game.map.visible_area
-        print(visible_area[self.rect.x, self.rect.y]) if visible_area[self.rect.x, self.rect.y] else 0
+        # print(visible_area[self.rect.x, self.rect.y]) if visible_area[self.rect.x, self.rect.y] else 0
         for j in range(1, abs(x) + 1):
             if x2 - j <= 0:
                 self.left = True
             elif x2 + w + j >= WIDTH:
                 self.right = True
             else:
-                self.left = any([visible_area[x2 - j, i] for i in range(y2, y2 + h)])
-                self.right = any([visible_area[x2 + w + j, i] for i in range(y2, y2 + h)])
+                self.left = all([visible_area[x2 - j, i] for i in range(y2, y2 + h)])
+                self.right = all([visible_area[x2 + w + j, i] for i in range(y2, y2 + h)])
 
             if self.left:
-                lastx = -j
+                lastx = -j + 1
                 break
             if self.right:
-                lastx = j
+                lastx = j - 1
                 break
         for j in range(1, abs(y) + 1):
             if y2 - j <= 0:
@@ -182,21 +185,23 @@ class Pawn:
             if y2 + h + j >= HEIGHT:
                 self.bottom = True
             else:
-                self.top = any([visible_area[i, y2 - j] for i in range(x2, x2 + w)])
-                self.bottom = any([visible_area[i, y2 + h + j] for i in range(x2, x2 + w)])
+                self.top = all([visible_area[i, y2 - j] for i in range(x2, x2 + w)])
+                self.bottom = all([visible_area[i, y2 + h + j] for i in range(x2, x2 + w)])
                 flg = 1
             if self.top:
-                lasty = -j
+                lasty = -j + 1
                 break
             if self.bottom:
-                lasty = j
+                lasty = j - 1
                 break
 
-        if (x < 0 and not self.left) or (x > 0 and not self.right) and WIDTH > self.rect.x + x > 0:
+        if ((x < 0 and not self.left) or (x >= 0 and not self.right)) and WIDTH > self.rect.x + x > 0:
             self.x += x
         else:
             self.x += lastx
-        if (y < 0 and not self.top) or (y > 0 and not self.bottom) and HEIGHT > self.rect.y + y > 0:
+            print('blet', lastx)
+
+        if ((y < 0 and not self.top) or (y >= 0 and not self.bottom)) and HEIGHT > self.rect.y + y > 0:
             self.y += y
         else:
             self.y += lasty
@@ -206,25 +211,25 @@ class Pawn:
         r1, r2 = game.camera.cam_x if self.xcamflg else self.x, game.camera.cam_y if self.ycamflg else self.y
         x = game.camera.set(r1, r2)
         camx, camy = game.camera.cam_x, game.camera.cam_y
-        if x[0] == 1 or self.rect.x > tx:
+        if x[0] == 1 or self.rect.x > tx + abs(self.horizontal_speed):
             self.xcamflg = 1
             self.rect.x = self.x - camx + tx
-        elif x[0] == -1 or self.rect.x < tx:
+        elif x[0] == -1 or self.rect.x < tx - abs(self.horizontal_speed):
             self.xcamflg = -1
             self.rect.x = self.x - camx + tx
         else:
             self.xcamflg = 0
             # self.rect.x = tx
-        if x[1] == 1 or self.rect.y > ty:
+        if x[1] == 1 or self.rect.y > ty + abs(self.vertical_speed):
             self.ycamflg = 1
             self.rect.y = self.y - camy + ty
-        elif x[1] == -1 or self.rect.y < ty:
+        elif x[1] == -1 or self.rect.y < ty - abs(self.vertical_speed):
             self.ycamflg = -1
             self.rect.y = self.y - camy + ty
         else:
             self.ycamflg = 0
             # self.rect.y = ty
-
+        print(self.xcamflg, self.ycamflg)
     def events_check(self):
         keyboard = pygame.key.get_pressed()
         keys = []
@@ -234,36 +239,13 @@ class Pawn:
                 keys.append(i)
         self.control(keys)
 
-    '''def hitboxes_check(self):
-        x = self.rect.x
-        y = self.rect.y
-        w = self.rect.w
-        h = self.rect.h
-        visible_area = game.map.visible_area
-        self.flags = [0, 0, 0, 0]
-        print(x, x + w, len(visible_area), len(visible_area[0]))
-        for i in range(x, x + w):
-            el_top = visible_area[i][y]
-            el_bottom = visible_area[i][y + h]
-            if el_top:
-                self.flags[0] = 1
-            if el_bottom:
-                self.flags[1] = 1
-        for i in range(y, y + h):
-            el_left = visible_area[x][i]
-            el_right = visible_area[x + w][i]
-            if el_left:
-                self.flags[2] = 1
-            if el_right:
-                self.flags[3] = 1
-        return self.flags'''
-
     def physics(self):
-        self.move(self.horizontal_speed, self.vertical_speed)
+        self.move(int(self.horizontal_speed), int(self.vertical_speed))
         self.onfloor = self.bottom
         if self.onfloor:
             self.grav_accel = G
             self.vertical_speed = 0
+            self.horizontal_speed += (-self.horizontal_speed) / 5
         else:
             # self.grav_accel += G
             self.vertical_speed += self.grav_accel
@@ -287,18 +269,24 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.group.draw(screen)
 
     def control(self, keys):
-        speed = 5
+        speed = 1
         if 0 in keys:
-            self.move(0, -speed)
+            ...
+            # self.move(0, -speed)
         if 2 in keys:
-            self.move(0, speed)
+            ...
+            # self.move(0, speed)
         if 1 in keys:
-            self.move(speed, 0)
+            self.horizontal_speed += speed
+            # self.move(speed, 0)
         if 3 in keys:
-            self.move(-speed, 0)
-        if 4 in keys and self.bottom:
-            print('jump')
-            self.vertical_speed += -30
+            self.horizontal_speed -= speed
+            # self.move(-speed, 0)
+        if 4 in keys and (self.jumpflg or self.bottom) and self.vertical_speed > -15:
+            self.jumpflg = 1
+            self.vertical_speed += -self.jump_power
+        else:
+            self.jumpflg = 0
 
 
 game = Main()
