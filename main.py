@@ -47,7 +47,7 @@ class Map:
         self.hitboxes = numpy.loadtxt('xd.txt')
         self.size = (len(self.hitboxes), len(self.hitboxes[0]))
 
-        self.mapimage = pygame.image.load('ht.png')
+        self.mapimage = pygame.image.load('map.png')
         self.mapsprite = pygame.sprite.Sprite()
         self.mapsprite.image = self.mapimage
         self.mapsprite.rect = self.mapsprite.image.get_rect()
@@ -161,47 +161,53 @@ class Pawn:
         b = self.rect.bottom
         t = self.rect.top
         lastx, lasty = 0, 0
-        flg = 0
         visible_area = game.map.visible_area
         # print(visible_area[self.rect.x, self.rect.y]) if visible_area[self.rect.x, self.rect.y] else 0
+        self.left, self.right, self.top, self.bottom = False, False, False, False
         for j in range(1, abs(x) + 1):
             if x2 - j <= 0:
                 self.left = True
             elif x2 + w + j >= WIDTH:
                 self.right = True
             else:
-                self.left = all([visible_area[x2 - j, i] for i in range(y2, y2 + h)])
-                self.right = all([visible_area[x2 + w + j, i] for i in range(y2, y2 + h)])
+                if not self.left:
+                    self.left = all([visible_area[x2 - j, i] for i in range(y2, y2 + h)])
+                if not self.right:
+                    self.right = all([visible_area[x2 + w + j, i] for i in range(y2, y2 + h)])
 
-            if self.left:
+            if self.left and not lastx:
                 lastx = -j + 1
                 break
-            if self.right:
+            if self.right and not lastx:
                 lastx = j - 1
                 break
+
+
         for j in range(1, abs(y) + 1):
             if y2 - j <= 0:
                 self.top = True
             if y2 + h + j >= HEIGHT:
                 self.bottom = True
             else:
-                self.top = all([visible_area[i, y2 - j] for i in range(x2, x2 + w)])
-                self.bottom = all([visible_area[i, y2 + h + j] for i in range(x2, x2 + w)])
+                if not self.top:
+                    self.top = all([visible_area[i, y2 - j] for i in range(x2, x2 + w)])
+                if not self.bottom:
+                    self.bottom = all([visible_area[i, y2 + h + j] for i in range(x2, x2 + w)])
                 flg = 1
-            if self.top:
+            if self.top and not lasty:
                 lasty = -j + 1
                 break
-            if self.bottom:
+            if self.bottom and not lasty:
                 lasty = j - 1
                 break
 
-        if ((x < 0 and not self.left) or (x >= 0 and not self.right)) and WIDTH > self.rect.x + x > 0:
+        if ((x < 0 and not self.left) or (x > 0 and not self.right)) and WIDTH > self.rect.x + x > 0:
             self.x += x
         else:
             self.x += lastx
             print('blet', lastx)
 
-        if ((y < 0 and not self.top) or (y >= 0 and not self.bottom)) and HEIGHT > self.rect.y + y > 0:
+        if ((y < 0 and not self.top) or (y > 0 and not self.bottom)) and HEIGHT > self.rect.y + y > 0:
             self.y += y
         else:
             self.y += lasty
@@ -229,7 +235,7 @@ class Pawn:
         else:
             self.ycamflg = 0
             # self.rect.y = ty
-        print(self.xcamflg, self.ycamflg)
+
     def events_check(self):
         keyboard = pygame.key.get_pressed()
         keys = []
