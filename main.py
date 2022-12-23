@@ -47,7 +47,7 @@ class Map:
         self.hitboxes = numpy.loadtxt('xd.txt')
         self.size = (len(self.hitboxes), len(self.hitboxes[0]))
 
-        self.mapimage = pygame.image.load('map.png')
+        self.mapimage = pygame.image.load('ht.png')
         self.mapsprite = pygame.sprite.Sprite()
         self.mapsprite.image = self.mapimage
         self.mapsprite.rect = self.mapsprite.image.get_rect()
