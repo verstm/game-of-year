@@ -2,6 +2,7 @@ import pygame as pg
 import pygame.event
 import numpy
 from pygame import gfxdraw
+from math import sin, cos
 
 pg.init()
 true_width, true_height = pygame.display.Info().current_w, pygame.display.Info().current_h
@@ -238,6 +239,8 @@ class Pawn:
     def events_check(self):
         keyboard = pygame.key.get_pressed()
         keys = []
+        if keyboard[pygame.K_g]:
+            self.knockback(150, 14)
         for i in range(len(controls[self.controls_num])):
             x = controls[self.controls_num][i]
             if keyboard[x]:
@@ -265,6 +268,10 @@ class Pawn:
                 self.animation_counter[1] = 0
             else:
                 self.animation_counter[1] += 1
+
+    def knockback(self, alpha, velocity):
+        self.vertical_speed -= velocity * sin(alpha / 57.3)
+        self.horizontal_speed += velocity * cos(alpha / 57.3)
 
 
 class Human(Pawn, pygame.sprite.Sprite):
