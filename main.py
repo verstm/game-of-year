@@ -47,7 +47,7 @@ class Map:
         self.hitboxes = numpy.loadtxt('xd.txt')
         self.size = (len(self.hitboxes), len(self.hitboxes[0]))
 
-        self.mapimage = pygame.image.load('ht.png')
+        self.mapimage = pygame.image.load('map.png')
         self.mapsprite = pygame.sprite.Sprite()
         self.mapsprite.image = self.mapimage
         self.mapsprite.rect = self.mapsprite.image.get_rect()
@@ -182,7 +182,6 @@ class Pawn:
                 lastx = j - 1
                 break
 
-
         for j in range(1, abs(y) + 1):
             if y2 - j <= 0:
                 self.top = True
@@ -255,6 +254,17 @@ class Pawn:
         else:
             # self.grav_accel += G
             self.vertical_speed += self.grav_accel
+        self.horizontal_speed = 0 if abs(self.horizontal_speed) < 1 else self.horizontal_speed
+        self.vertical_speed = 0 if abs(self.vertical_speed) < 1 else self.vertical_speed
+
+    def animation_update(self):
+        # print(self.animation_counter, self.horizontal_speed)
+        if self.animation_counter[0] >= 0:
+            self.image = self.animations[self.animation_counter[0]][self.animation_counter[1]]
+            if self.animation_counter[1] == len(self.animations[self.animation_counter[0]]) - 1:
+                self.animation_counter[1] = 0
+            else:
+                self.animation_counter[1] += 1
 
 
 class Human(Pawn, pygame.sprite.Sprite):
@@ -263,7 +273,11 @@ class Human(Pawn, pygame.sprite.Sprite):
         animpath = ASSETS_PATH + 'Sprites/Animations/running_1/'
         self.image = pg.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')
         self.rect = self.image.get_rect()
-        self.runanimation = [animpath + f'{i}.png' for i in range(1, 7)]
+        self.runanimation_right = [pygame.image.load(animpath + f'{i}.png') for i in range(1, 7)]
+        self.runanimation_left = [pygame.transform.flip(pygame.image.load(animpath + f'{i}.png'), True, False) for i in
+                                  range(1, 7)]
+        self.animations = [self.runanimation_left, self.runanimation_right]
+        self.animation_counter = [0, 0]
         self.moves = []
         print(self.rect.bottom)
 
@@ -272,27 +286,33 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.events_check()
         self.physics()
         # self.rect.x, self.rect.y = self.x, self.y
+        self.animation_update()
         self.group.draw(screen)
 
     def control(self, keys):
-        speed = 1
+        speed = 3
         if 0 in keys:
             ...
             # self.move(0, -speed)
         if 2 in keys:
             ...
             # self.move(0, speed)
-        if 1 in keys:
+        if 1 in keys and self.bottom:
             self.horizontal_speed += speed
+            self.animation_counter[0] = 1
             # self.move(speed, 0)
-        if 3 in keys:
+        if 3 in keys and self.bottom:
             self.horizontal_speed -= speed
+            self.animation_counter[0] = 0
             # self.move(-speed, 0)
         if 4 in keys and (self.jumpflg or self.bottom) and self.vertical_speed > -15:
             self.jumpflg = 1
             self.vertical_speed += -self.jump_power
         else:
             self.jumpflg = 0
+        if self.horizontal_speed == 0:
+            self.animation_counter[0] = -1
+            self.animation_counter[1] = 0
 
 
 game = Main()
