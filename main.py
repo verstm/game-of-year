@@ -82,13 +82,13 @@ class GUI:
         self.image_chr2_rect.top = self.text_chr2_rect.bottom + HEIGHT // 54
 
 
-        self.image_hp1 = pygame.image.load(os.path.join(path, 'hp_bar_1.png'))
+        self.image_hp1 = pygame.image.load(os.path.join(path, 'hp_bar.png'))
         self.image_hp1 = pygame.transform.scale(self.image_hp1, (HEIGHT // 5, HEIGHT // 21))
         self.image_hp1_rect = self.image_hp1.get_rect()
         self.image_hp1_rect.left = self.text_chr1_rect.left
         self.image_hp1_rect.top = self.image_chr1_rect.bottom + HEIGHT // 54
 
-        self.image_hp2 = pygame.image.load(os.path.join(path, 'hp_bar_1.png'))
+        self.image_hp2 = pygame.image.load(os.path.join(path, 'hp_bar.png'))
         self.image_hp2 = pygame.transform.scale(self.image_hp2, (HEIGHT // 5, HEIGHT // 21))
         self.image_hp2_rect = self.image_hp2.get_rect()
         self.image_hp2_rect.right = self.text_chr2_rect.right
