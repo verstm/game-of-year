@@ -176,10 +176,10 @@ class Pawn:
                 if not self.right:
                     self.right = all([visible_area[x2 + w + j, i] for i in range(y2, y2 + h)])
 
-            if self.left and not lastx:
+            if self.left:
                 lastx = -j + 1
                 break
-            if self.right and not lastx:
+            if self.right:
                 lastx = j - 1
                 break
 
@@ -194,10 +194,10 @@ class Pawn:
                 if not self.bottom:
                     self.bottom = all([visible_area[i, y2 + h + j] for i in range(x2, x2 + w)])
                 flg = 1
-            if self.top and not lasty:
+            if self.top:
                 lasty = -j + 1
                 break
-            if self.bottom and not lasty:
+            if self.bottom:
                 lasty = j - 1
                 break
 
@@ -205,7 +205,6 @@ class Pawn:
             self.x += x
         else:
             self.x += lastx
-            print('blet', lastx)
 
         if ((y < 0 and not self.top) or (y > 0 and not self.bottom)) and HEIGHT > self.rect.y + y > 0:
             self.y += y
