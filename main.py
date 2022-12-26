@@ -4,6 +4,8 @@ import numpy
 from pygame import gfxdraw
 from math import sin, cos
 import os
+import pickle
+from twisted.internet import protocol, reactor
 
 pg.init()
 true_width, true_height = pygame.display.Info().current_w, pygame.display.Info().current_h
@@ -16,6 +18,42 @@ screen = pg.display.set_mode((WIDTH, HEIGHT))
 ASSETS_PATH = 'Assets/'
 controls = [[pg.K_w, pg.K_d, pg.K_s, pg.K_a, pg.K_SPACE, pg.KMOD_SHIFT]]
 G = 1
+
+
+class Echo(protocol.Protocol):
+
+    def dataReceived(self, data):
+        print(data)
+        c = pickle.loads(data)
+        print(c.xd)
+
+
+class EchoClient(protocol.Protocol):
+
+    def connectionMade(self):
+        a = Test(121)
+        b = pickle.dumps(a)
+        self.transport.write(b)
+
+    def dataReceived(self, data):
+        print("Server said:", data)
+        self.transport.write(b'sosi')
+        print("I said: sosi")
+
+    def connectionLost(self, reason):
+        print("connection lost")
+
+
+class EchoFactory(protocol.ClientFactory):
+    protocol = EchoClient
+
+    def clientConnectionFailed(self, connector, reason):
+        print("Connection failed - goodbye!")
+        reactor.stop()
+
+    def clientConnectionLost(self, connector, reason):
+        print("Connection lost - goodbye!")
+        reactor.stop()
 
 
 class Main:
@@ -51,7 +89,6 @@ class GUI:
     # если будем менять настройки разрешения во время работы игры надо будет заинитить гуи заново
     # 1536 864
     def __init__(self, chr1, chr2):
-
         self.chr1 = chr1
         self.chr2 = chr2
 
@@ -64,7 +101,7 @@ class GUI:
 
         self.text_chr1 = self.chr_font.render(chr1.name, True, self.chr1_font_color)
         self.text_chr2 = self.chr_font.render(chr2.name, True, self.chr2_font_color)
-        
+
         self.text_chr1_rect = self.text_chr1.get_rect()
         self.text_chr1_rect.left = HEIGHT // 40
         self.text_chr1_rect.top = HEIGHT // 40
@@ -87,7 +124,6 @@ class GUI:
         self.image_chr2_rect.right = WIDTH - HEIGHT // 40
         self.image_chr2_rect.top = self.text_chr2_rect.bottom + HEIGHT // 54
 
-
         self.image_hp1 = pygame.image.load(os.path.join(path, 'hp_bar.png'))
         self.image_hp1 = pygame.transform.scale(self.image_hp1, (HEIGHT // 5, HEIGHT // 21))
         self.image_hp1_rect = self.image_hp1.get_rect()
@@ -100,7 +136,8 @@ class GUI:
         self.image_hp2_rect.right = self.text_chr2_rect.right
         self.image_hp2_rect.top = self.image_chr2_rect.bottom + HEIGHT // 54
 
-        self.green_hp1 = pygame.Surface((HEIGHT // 5 - self.image_hp1_rect.width // 6, HEIGHT // 21 // 3 * 2 - HEIGHT // 21 // 3 * 2 * 0.1))
+        self.green_hp1 = pygame.Surface(
+            (HEIGHT // 5 - self.image_hp1_rect.width // 6, HEIGHT // 21 // 3 * 2 - HEIGHT // 21 // 3 * 2 * 0.1))
         self.green_hp1_rect = self.green_hp1.get_rect()
         self.green_hp1_rect.left = self.image_hp1_rect.left + self.image_hp1_rect.width // 6
         self.green_hp1_rect.centery = self.image_hp1_rect.centery
@@ -109,7 +146,8 @@ class GUI:
         self.red_hp1_rect = self.red_hp1.get_rect()
         self.red_hp1_rect.height = self.green_hp1_rect.height
 
-        self.green_hp2 = pygame.Surface((HEIGHT // 5 - self.image_hp2_rect.width // 6, HEIGHT // 21 // 3 * 2 - HEIGHT // 21 // 3 * 2 * 0.1))
+        self.green_hp2 = pygame.Surface(
+            (HEIGHT // 5 - self.image_hp2_rect.width // 6, HEIGHT // 21 // 3 * 2 - HEIGHT // 21 // 3 * 2 * 0.1))
         self.green_hp2_rect = self.green_hp2.get_rect()
         self.green_hp2_rect.left = self.image_hp2_rect.left + self.image_hp2_rect.width // 6
         self.green_hp2_rect.centery = self.image_hp2_rect.centery
@@ -118,23 +156,33 @@ class GUI:
         self.red_hp2_rect = self.red_hp1.get_rect()
         self.red_hp2_rect.height = self.green_hp2_rect.height
 
-        self.to_blit = [[self.text_chr1, self.text_chr1_rect], [self.text_chr2, self.text_chr2_rect], [self.image_chr1, self.image_chr1_rect], [self.image_chr2, self.image_chr2_rect], [self.green_hp1, self.green_hp1_rect], [self.green_hp2, self.green_hp2_rect], [self.red_hp1, self.red_hp1_rect], [self.red_hp2, self.red_hp2_rect], [self.image_hp1, self.image_hp1_rect], [self.image_hp2, self.image_hp2_rect]]
+        self.to_blit = [[self.text_chr1, self.text_chr1_rect], [self.text_chr2, self.text_chr2_rect],
+                        [self.image_chr1, self.image_chr1_rect], [self.image_chr2, self.image_chr2_rect],
+                        [self.green_hp1, self.green_hp1_rect], [self.green_hp2, self.green_hp2_rect],
+                        [self.red_hp1, self.red_hp1_rect], [self.red_hp2, self.red_hp2_rect],
+                        [self.image_hp1, self.image_hp1_rect], [self.image_hp2, self.image_hp2_rect]]
 
     def update(self, chr1, chr2):
-        self.to_blit = [[self.text_chr1, self.text_chr1_rect], [self.text_chr2, self.text_chr2_rect], [self.image_chr1, self.image_chr1_rect], [self.image_chr2, self.image_chr2_rect], [self.green_hp1, self.green_hp1_rect], [self.green_hp2, self.green_hp2_rect], [self.red_hp1, self.red_hp1_rect], [self.red_hp2, self.red_hp2_rect], [self.image_hp1, self.image_hp1_rect], [self.image_hp2, self.image_hp2_rect]]
+        self.to_blit = [[self.text_chr1, self.text_chr1_rect], [self.text_chr2, self.text_chr2_rect],
+                        [self.image_chr1, self.image_chr1_rect], [self.image_chr2, self.image_chr2_rect],
+                        [self.green_hp1, self.green_hp1_rect], [self.green_hp2, self.green_hp2_rect],
+                        [self.red_hp1, self.red_hp1_rect], [self.red_hp2, self.red_hp2_rect],
+                        [self.image_hp1, self.image_hp1_rect], [self.image_hp2, self.image_hp2_rect]]
 
         self.chr1 = chr1
         self.chr2 = chr2
 
         self.green_hp1.fill((0, 255, 0))
-        self.red_hp1 = pygame.Surface((self.green_hp1_rect.width * (1-self.chr1.HP / self.chr1.maxHP), self.green_hp1_rect.height))
+        self.red_hp1 = pygame.Surface(
+            (self.green_hp1_rect.width * (1 - self.chr1.HP / self.chr1.maxHP), self.green_hp1_rect.height))
         self.red_hp1_rect = self.red_hp1.get_rect()
         self.red_hp1_rect.right = self.green_hp1_rect.right
         self.red_hp1_rect.top = self.green_hp1_rect.top
         self.red_hp1.fill((255, 0, 0))
 
         self.green_hp2.fill((0, 255, 0))
-        self.red_hp2 = pygame.Surface((self.green_hp2_rect.width * (1-self.chr2.HP / self.chr2.maxHP), self.green_hp2_rect.height))
+        self.red_hp2 = pygame.Surface(
+            (self.green_hp2_rect.width * (1 - self.chr2.HP / self.chr2.maxHP), self.green_hp2_rect.height))
         self.red_hp2_rect = self.red_hp2.get_rect()
         self.red_hp2_rect.right = self.green_hp2_rect.right
         self.red_hp2_rect.top = self.green_hp2_rect.top
@@ -145,6 +193,7 @@ class GUI:
     def blit_gui(self):
         for el in self.to_blit:
             screen.blit(el[0], el[1])
+
 
 class Map:
     def __init__(self):
