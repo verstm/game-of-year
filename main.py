@@ -1,11 +1,13 @@
 import pygame as pg
 import pygame.event
 import numpy
-from pygame import gfxdraw
 from math import sin, cos
 import os
 import pickle
 from twisted.internet import protocol, reactor
+import threading
+from socket import socket, AF_INET, SOCK_DGRAM
+from net_functions import *
 
 pg.init()
 true_width, true_height = pygame.display.Info().current_w, pygame.display.Info().current_h
@@ -29,16 +31,13 @@ class Echo(protocol.Protocol):
 
 
 class EchoClient(protocol.Protocol):
-
     def connectionMade(self):
-        a = Test(121)
-        b = pickle.dumps(a)
+        b = b'xd'
         self.transport.write(b)
 
     def dataReceived(self, data):
         print("Server said:", data)
-        self.transport.write(b'sosi')
-        print("I said: sosi")
+        # self.transport.write(b'sosi')
 
     def connectionLost(self, reason):
         print("connection lost")
@@ -56,9 +55,9 @@ class EchoFactory(protocol.ClientFactory):
         reactor.stop()
 
 
-def client():
+def client(ip):
     f = EchoFactory()
-    reactor.connectTCP("localhost", 8000, f)
+    reactor.connectTCP(ip, 8000, f)
     reactor.run()
 
 
@@ -80,6 +79,7 @@ class Main:
         self.mode = 0
         self.host = True
         self.info = []
+        self.multiplayer_flg = 0
 
     def update(self):
         if self.mode == 0:
@@ -92,11 +92,31 @@ class Main:
             self.gui.update(self.pers1, self.pers2)
         if self.mode == 2:
             if self.host:
-                ...
+                if not self.multiplayer_flg:
+                    self.server_thread = threading.Thread(target=server)
+                    self.server_thread.start()
+                    self.multiplayer_flg = 1
             else:
-                ...
+                if not self.multiplayer_flg:
+                    opn = scan_lan(8000)
+                    self.client_thread = threading.Thread(target=client, args=[opn[0]])
+                    self.client_thread.start()
+                    self.multiplayer_flg = 1
+            self.map.update()
+            self.camera.update()
+            self.pers1.update()
+            self.pers2.update()
+            self.gui.update(self.pers1, self.pers2)
+            if self.pers1.HP <= 0:
+                self.mode = 3
+            if self.pers2.HP <= 0:
+                self.mode = 3
+        if self.mode == 3:
+            print('GAME OVER!!!')
         # print(self.mode)
 
+    def information_gathering(self):
+        ...
 
 class GUI:
     # если будем менять настройки разрешения во время работы игры надо будет заинитить гуи заново
