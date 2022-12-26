@@ -22,28 +22,46 @@ controls = [[pg.K_w, pg.K_d, pg.K_s, pg.K_a, pg.K_SPACE, pg.KMOD_SHIFT]]
 G = 1
 
 
-class Echo(protocol.Protocol):
+class EchoServer(protocol.Protocol):
 
     def dataReceived(self, data):
-        print(data)
-        c = pickle.loads(data)
-        print(c.xd)
+        recv_pack = eval(data.decode())
+        for i in range(len(recv_pack)):
+            for j in range(len(recv_pack[0])):
+                recv_pack[i][j] = pickle.loads(recv_pack[i][j])
+        game.check_pack(recv_pack)
+        send_pack = game.info
+        for i in range(len(send_pack)):
+            for j in range(len(send_pack[0])):
+                send_pack[i][j] = pickle.dumps(send_pack[i][j])
+        self.transport.write(str(send_pack).encode())
 
 
 class EchoClient(protocol.Protocol):
     def connectionMade(self):
-        b = b'xd'
-        self.transport.write(b)
+        send_pack = game.info
+        for i in range(len(send_pack)):
+            for j in range(len(send_pack[0])):
+                send_pack[i][j] = pickle.dumps(send_pack[i][j])
+        self.transport.write(str(send_pack).encode())
 
     def dataReceived(self, data):
-        print("Server said:", data)
-        # self.transport.write(b'sosi')
+        recv_pack = eval(data.decode())
+        for i in range(len(recv_pack)):
+            for j in range(len(recv_pack[0])):
+                recv_pack[i][j] = pickle.loads(recv_pack[i][j])
+        game.check_pack(recv_pack)
+        send_pack = game.info
+        for i in range(len(send_pack)):
+            for j in range(len(send_pack[0])):
+                send_pack[i][j] = pickle.dumps(send_pack[i][j])
+        self.transport.write(str(send_pack).encode())
 
     def connectionLost(self, reason):
         print("connection lost")
 
 
-class EchoFactory(protocol.ClientFactory):
+class ClientFactory(protocol.ClientFactory):
     protocol = EchoClient
 
     def clientConnectionFailed(self, connector, reason):
@@ -55,15 +73,18 @@ class EchoFactory(protocol.ClientFactory):
         reactor.stop()
 
 
+class ServerFactory(protocol.ServerFactory):
+    protocol = EchoServer
+
+
 def client(ip):
-    f = EchoFactory()
+    f = ClientFactory()
     reactor.connectTCP(ip, 8000, f)
     reactor.run()
 
 
 def server():
     factory = protocol.ServerFactory()
-    factory.protocol = Echo
     reactor.listenTCP(8000, factory)
     reactor.run()
 
@@ -77,11 +98,12 @@ class Main:
         self.pers2 = Human()
         self.gui = GUI(self.pers1, self.pers2)
         self.mode = 0
+        self.events = []
         self.host = True
-        self.info = []
         self.multiplayer_flg = 0
 
     def update(self):
+        self.events = []
         if self.mode == 0:
             self.mode = self.menu.update()
         if self.mode == 1:
@@ -113,10 +135,16 @@ class Main:
                 self.mode = 3
         if self.mode == 3:
             print('GAME OVER!!!')
+        self.info = [[self.pers1, self.pers2], self.events]
         # print(self.mode)
+
+    def check_pack(self, pack):
+        for i in range(len(pack)):
+            ...
 
     def information_gathering(self):
         ...
+
 
 class GUI:
     # если будем менять настройки разрешения во время работы игры надо будет заинитить гуи заново
