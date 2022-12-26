@@ -27,6 +27,7 @@ class Main:
         self.pers2 = Human()
         self.gui = GUI(self.pers1, self.pers2)
         self.mode = 0
+        self.host = True
         self.info = []
 
     def update(self):
@@ -38,6 +39,11 @@ class Main:
             self.pers1.update()
             self.pers2.update()
             self.gui.update(self.pers1, self.pers2)
+        if self.mode == 2:
+            if self.host:
+                ...
+            else:
+                ...
         # print(self.mode)
 
 
