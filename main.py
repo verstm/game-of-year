@@ -56,6 +56,19 @@ class EchoFactory(protocol.ClientFactory):
         reactor.stop()
 
 
+def client():
+    f = EchoFactory()
+    reactor.connectTCP("localhost", 8000, f)
+    reactor.run()
+
+
+def server():
+    factory = protocol.ServerFactory()
+    factory.protocol = Echo
+    reactor.listenTCP(8000, factory)
+    reactor.run()
+
+
 class Main:
     def __init__(self):
         self.map = Map()
