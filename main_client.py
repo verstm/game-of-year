@@ -85,7 +85,7 @@ class Main:
         self.gui = GUI(self.pers1, self.pers2)
         self.mode = 0
         self.events = []
-        self.host = True
+        self.host = False
         self.multiplayer_flg = 0
 
     def update(self):

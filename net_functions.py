@@ -37,6 +37,7 @@ def scan_lan(port):
         if op:
             found.append(ip)
     t = time.time() - xd
+    return found
 
 
 
