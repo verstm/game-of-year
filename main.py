@@ -1,7 +1,7 @@
 import pygame as pg
 import pygame.event
 import numpy
-from math import sin, cos
+from math import sin, cos, acos, hypot
 import os
 import pickle
 from twisted.internet import protocol, reactor
@@ -395,6 +395,8 @@ class Pawn:
         self.cam_xlock, self.cam_ylock = 0, 0
         self.xcamflg, self.ycamflg = 0, 0
         self.left, self.right, self.top, self.bottom = 0, 0, 0, 0
+        self.cd = {self.attack: 0}
+        self.maxcd = {self.attack: 25}
 
     def move(self, x, y):
         # print(x, y)
@@ -487,13 +489,14 @@ class Pawn:
     def events_check(self):
         keyboard = pygame.key.get_pressed()
         keys = []
+        mouse = pygame.mouse.get_pressed()
         if keyboard[pygame.K_g]:
             self.knockback(150, 14)
         for i in range(len(controls[self.controls_num])):
             x = controls[self.controls_num][i]
             if keyboard[x]:
                 keys.append(i)
-        self.control(keys)
+        self.control(keys, mouse)
 
     def physics(self):
         self.move(int(self.horizontal_speed), int(self.vertical_speed))
@@ -521,18 +524,61 @@ class Pawn:
         self.vertical_speed -= velocity * sin(alpha / 57.3)
         self.horizontal_speed += velocity * cos(alpha / 57.3)
 
+    def update_cd(self):
+        for key in self.cd.keys():
+            if self.cd[key] != 0:
+                if self.cd[key] < self.maxcd[key]:
+                    self.cd[key] += 1
+                else:
+                    self.cd[key] = 0
+
+    def attack(self, alpha):
+        self.cd[self.attack] = 1
+        if alpha > 340 or alpha <= 20:
+            self.animation_counter = [2, 0]
+            self.knockback(0, 15)
+        elif alpha > 20 and alpha <= 90:
+            self.animation_counter = [3, 0]
+            if self.onfloor:
+                self.knockback(alpha, 50)
+            else:
+                self.knockback(alpha, 15)
+        elif alpha > 90 and alpha <= 160:
+            self.animation_counter = [4, 0]
+            if self.onfloor:
+                self.knockback(alpha, 50)
+            else:
+                self.knockback(alpha, 15)
+        elif alpha > 160 and alpha <= 220:
+            self.animation_counter = [5, 0]
+            self.knockback(180, 15)
+        elif alpha > 220 and alpha <= 270:
+            self.animation_counter = [6, 0]
+            self.knockback(alpha, 15)
+        elif alpha > 270 and alpha <= 340:
+            self.animation_counter = [7, 0]
+            self.knockback(alpha, 15)
+            
 
 class Human(Pawn, pygame.sprite.Sprite):
     def __init__(self):
         super(Human, self).__init__()
-        animpath = ASSETS_PATH + 'Sprites/Animations/running_1/'
+        animpath_run = ASSETS_PATH + 'Sprites/Animations/running_1/'
+        animpath_atk = ASSETS_PATH + 'sprites/Animations/attacking/'
         self.image = pg.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')
         self.rect = self.image.get_rect()
-        self.runanimation_right = [pygame.image.load(animpath + f'{i}.png') for i in range(1, 7)]
-        self.runanimation_left = [pygame.transform.flip(pygame.image.load(animpath + f'{i}.png'), True, False) for i in
+        self.runanimation_right = [pygame.image.load(animpath_run + f'{i}.png') for i in range(1, 7)]
+        self.runanimation_left = [pygame.transform.flip(pygame.image.load(animpath_run + f'{i}.png'), True, False) for i in
                                   range(1, 7)]
+        
+        self.atkanimation_right = [pygame.image.load(animpath_atk + f'pr_{i}.png') for i in range(1, 6)]
+        self.atkanimation_left = [pygame.transform.flip(pygame.image.load(animpath_atk + f'pr_{i}.png'), True, False) for i in range(1, 6)]
+        self.atkanimation_upright = [pygame.image.load(animpath_atk + f'pur_{i}.png') for i in range(1, 6)]
+        self.atkanimation_upleft = [pygame.transform.flip(pygame.image.load(animpath_atk + f'pur_{i}.png'), True, False) for i in range(1, 6)]
+        self.atkanimation_downright = [pygame.image.load(animpath_atk + f'pdr_{i}.png') for i in range(1, 6)]
+        self.atkanimation_downleft = [pygame.transform.flip(pygame.image.load(animpath_atk + f'pdr_{i}.png'), True, False) for i in range(1, 6)]
 
-        self.animations = [self.runanimation_left, self.runanimation_right]
+        self.animations = [self.runanimation_left, self.runanimation_right, self.atkanimation_right, self.atkanimation_upright, self.atkanimation_upleft, self.atkanimation_left, self.atkanimation_downleft, self.atkanimation_downright]
         self.animation_counter = [-1, 0]
         self.moves = []
         self.pic = 'Human.png'
@@ -542,6 +588,7 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.HP = self.maxHP
         self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
                      self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
+        
 
     def update(self):
         if self.main_chr:
@@ -554,8 +601,10 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.group.draw(screen)
         self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
                      self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
+        
+        self.update_cd()
 
-    def control(self, keys):
+    def control(self, keys, mouse):
         speed = 3
         keys_1 = pygame.key.get_pressed()
         if keys_1[pygame.K_h]:
@@ -582,6 +631,21 @@ class Human(Pawn, pygame.sprite.Sprite):
         if self.horizontal_speed == 0:
             self.animation_counter[0] = -1
             self.animation_counter[1] = 0
+        if mouse[0] and self.cd[self.attack] == 0:
+            pos = pygame.mouse.get_pos()
+            x = pos[0] - self.rect.center[0]
+            y = self.rect.center[1] - pos[1]
+            sinalpha = y / hypot(x, y)
+            cosalpha = x / hypot(x, y)
+            #print(cosalpha)
+            if sinalpha < 0:
+                cosalpha = -cosalpha
+            alpha = acos(cosalpha) * 57.3
+            if sinalpha < 0:
+                alpha += 180
+            print(alpha)
+            self.attack(alpha)
+
 
 
 game = Main()
