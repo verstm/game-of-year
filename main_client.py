@@ -22,6 +22,8 @@ ASSETS_PATH = 'Assets/'
 controls = [[pg.K_w, pg.K_d, pg.K_s, pg.K_a, pg.K_SPACE, pg.KMOD_SHIFT]]
 G = 1
 
+print(pygame.mouse.get_pressed())
+
 
 # xd
 
@@ -73,14 +75,15 @@ class ClientFactory(protocol.ClientFactory):
 
 def client(ip):
     f = ClientFactory()
-    reactor.connectTCP(ip, 8000, f)
+    reactor.connectTCP(ip, 8080, f)
     reactor.run(installSignalHandlers=False)
 
 
 def server():
+    print('server started')
     factory = protocol.ServerFactory()
     factory.protocol = EchoServer
-    reactor.listenTCP(8000, factory)
+    reactor.listenTCP(8080, factory)
     reactor.run(installSignalHandlers=False)
 
 
@@ -92,6 +95,7 @@ class Main:
         self.pers1 = Human()
         self.pers2 = Human()
         self.pers2.main_chr = 0
+        self.pers2.rect.x, self.pers2.rect.y = self.pers1.truecords
         self.gui = GUI(self.pers1, self.pers2)
         self.mode = 0
         self.events = []
@@ -113,6 +117,8 @@ class Main:
         if self.mode == 2:
             if self.connected and self.pack:
                 self.check_pack()
+            else:
+                ...
             if self.host:
                 if not self.multiplayer_flg:
                     self.server_thread = threading.Thread(target=server)
@@ -120,7 +126,7 @@ class Main:
                     self.multiplayer_flg = 1
             else:
                 if not self.multiplayer_flg:
-                    opn = scan_lan(8000)
+                    opn = scan_lan(8080)
                     self.client_thread = threading.Thread(target=client, args=[opn[0]])
                     self.client_thread.start()
                     self.multiplayer_flg = 1
@@ -505,7 +511,7 @@ class Pawn:
     def animation_update(self):
         # print(self.animation_counter, self.horizontal_speed)
         if self.animation_counter[0] >= 0:
-            self.image = self.animations[self.animation_counter[0]][self.animation_counter[1]][0]
+            self.image = self.animations[self.animation_counter[0]][self.animation_counter[1]]
             if self.animation_counter[1] == len(self.animations[self.animation_counter[0]]) - 1:
                 self.animation_counter[1] = 0
             else:
@@ -522,23 +528,18 @@ class Human(Pawn, pygame.sprite.Sprite):
         animpath = ASSETS_PATH + 'Sprites/Animations/running_1/'
         self.image = pg.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')
         self.rect = self.image.get_rect()
-        self.runanimation_right = [(pygame.image.load(animpath + f'{i}.png'), animpath + f'{i}.png', 1) for i in
-                                   range(1, 7)]
-        self.runanimation_left = [
-            (pygame.transform.flip(pygame.image.load(animpath + f'{i}.png'), True, False), animpath + f'{i}.png', -1)
-            for i
-            in range(1, 7)]
+        self.runanimation_right = [pygame.image.load(animpath + f'{i}.png') for i in range(1, 7)]
+        self.runanimation_left = [pygame.transform.flip(pygame.image.load(animpath + f'{i}.png'), True, False) for i in
+                                  range(1, 7)]
 
         self.animations = [self.runanimation_left, self.runanimation_right]
-        self.animation_counter = [0, 0]
+        self.animation_counter = [-1, 0]
         self.moves = []
         self.pic = 'Human.png'
         self.name = 'Human'
         self.maxHP = 1000
         self.main_chr = 1
         self.HP = self.maxHP
-        animsforinfo = self.animations.copy()
-        animsforinfo = list(map(lambda i: list(map(lambda j: j[1:], i)), animsforinfo.copy()))
         self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
                      self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
 
