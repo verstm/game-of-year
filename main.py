@@ -92,6 +92,7 @@ class Main:
         self.pers1 = Human()
         self.pers2 = Human()
         self.pers2.main_chr = 0
+        self.pers2.rect.x, self.pers2.rect.y = self.pers1.truecords
         self.gui = GUI(self.pers1, self.pers2)
         self.mode = 0
         self.events = []
@@ -113,6 +114,8 @@ class Main:
         if self.mode == 2:
             if self.connected and self.pack:
                 self.check_pack()
+            else:
+                ...
             if self.host:
                 if not self.multiplayer_flg:
                     self.server_thread = threading.Thread(target=server)
@@ -530,7 +533,7 @@ class Human(Pawn, pygame.sprite.Sprite):
             in range(1, 7)]
 
         self.animations = [self.runanimation_left, self.runanimation_right]
-        self.animation_counter = [0, 0]
+        self.animation_counter = [-1, 0]
         self.moves = []
         self.pic = 'Human.png'
         self.name = 'Human'
