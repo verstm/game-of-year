@@ -8,6 +8,7 @@ from twisted.internet import protocol, reactor
 import threading
 from socket import socket, AF_INET, SOCK_DGRAM
 from net_functions import *
+from copy import copy, deepcopy
 
 pg.init()
 true_width, true_height = pygame.display.Info().current_w, pygame.display.Info().current_h
@@ -22,27 +23,39 @@ controls = [[pg.K_w, pg.K_d, pg.K_s, pg.K_a, pg.K_SPACE, pg.KMOD_SHIFT]]
 G = 1
 
 
+# xd
+
 class EchoServer(protocol.Protocol):
+    def connectionMade(self):
+        game.connected = 1
 
     def dataReceived(self, data):
         recv_pack = eval(data.decode())
-        game.check_pack(recv_pack)
+        game.pack = recv_pack
         send_pack = game.info
         self.transport.write(str(send_pack).encode())
+        clock.tick(FPS)
+
+    def connectionLost(self, reason):
+        game.connected = 0
 
 
 class EchoClient(protocol.Protocol):
     def connectionMade(self):
+        game.connected = 1
         send_pack = game.info
         self.transport.write(str(send_pack).encode())
+        clock.tick(FPS)
 
     def dataReceived(self, data):
         recv_pack = eval(data.decode())
-        game.check_pack(recv_pack)
+        game.pack = recv_pack
         send_pack = game.info
         self.transport.write(str(send_pack).encode())
+        clock.tick(FPS)
 
     def connectionLost(self, reason):
+        game.connected = 0
         print("connection lost")
 
 
@@ -58,10 +71,6 @@ class ClientFactory(protocol.ClientFactory):
         reactor.stop()
 
 
-class ServerFactory(protocol.ServerFactory):
-    protocol = EchoServer
-
-
 def client(ip):
     f = ClientFactory()
     reactor.connectTCP(ip, 8000, f)
@@ -70,6 +79,7 @@ def client(ip):
 
 def server():
     factory = protocol.ServerFactory()
+    factory.protocol = EchoServer
     reactor.listenTCP(8000, factory)
     reactor.run(installSignalHandlers=False)
 
@@ -85,6 +95,8 @@ class Main:
         self.gui = GUI(self.pers1, self.pers2)
         self.mode = 0
         self.events = []
+        self.connected = 0
+        self.pack = None
         self.host = True
         self.multiplayer_flg = 0
 
@@ -99,6 +111,8 @@ class Main:
             self.pers2.update()
             self.gui.update(self.pers1, self.pers2)
         if self.mode == 2:
+            if self.connected and self.pack:
+                self.check_pack()
             if self.host:
                 if not self.multiplayer_flg:
                     self.server_thread = threading.Thread(target=server)
@@ -119,30 +133,38 @@ class Main:
                 self.mode = 3
             if self.pers2.HP <= 0:
                 self.mode = 3
+            # self.pers1.HP -= 1
+            # self.pers2.HP -= 1
         if self.mode == 3:
             print('GAME OVER!!!')
-        self.info = [self.pers1.info, self.pers2.info]
+        self.info = [self.pers1.info]
 
-    def check_pack(self, pack):
+    def check_pack(self):
         # pack = [self.pers1.info, self.pers2.info]
         # persinfo = [self.HP, self.maxHP, self.name, self.pic, animsforinfo, self.animation_counter]
-        print('loading pack')
-        characters = [self.pers1, self.pers2]
-        for i in range(2):
-            characters[1 - i].HP = pack[i][0]
-            characters[1 - i].maxHP = pack[i][1]
-            characters[1 - i].name = pack[i][2]
-            characters[1 - i].pic = pack[i][3]
-            anims = pack[i][4].copy()
+        pack = deepcopy(self.pack)
+        print(pack)
+        characters = [self.pers2]
+        for i in range(1):
+            characters[i].HP = pack[i][0]
+            characters[i].maxHP = pack[i][1]
+            characters[i].name = pack[i][2]
+            characters[i].pic = pack[i][3]
+            '''anims = deepcopy(pack[i][4])
             for x in range(len(anims)):
                 for y in range(len(anims[x])):
+                    # print(anims[x][y])
                     anims[x][y] = (pg.image.load(anims[x][y][0]) if anims[x][y][-1] > 0 else pygame.transform.flip(
                         pg.image.load(anims[x][y][0]), True, False), anims[x][y][0], anims[x][y][-1])
-            characters[1 - i].animations = anims
-            characters[1 - i].animation_counter = pack[i][5]
-
-    def information_gathering(self):
-        ...
+            characters[i].animations = anims.copy()'''
+            characters[i].animation_counter = pack[i][4].copy()
+            characters[i].vertical_speed = pack[i][5]
+            characters[i].horizontal_speed = pack[i][6]
+            characters[i].x = pack[i][7]
+            characters[i].y = pack[i][8]
+            # characters[i].rect.x = pack[i][7]
+            # characters[i].rect.y = pack[i][8]
+    # def information_gathering(self):
 
 
 class GUI:
@@ -370,6 +392,7 @@ class Pawn:
 
     def move(self, x, y):
         # print(x, y)
+        camerax, cameray = game.camera.cam_x, game.camera.cam_y
         x2 = self.rect.x
         y2 = self.rect.y
         w = self.rect.w
@@ -377,8 +400,8 @@ class Pawn:
         b = self.rect.bottom
         t = self.rect.top
         lastx, lasty = 0, 0
-        visible_area = game.map.visible_area
-        # print(visible_area[self.rect.x, self.rect.y]) if visible_area[self.rect.x, self.rect.y] else 0
+        area = game.map.hitboxes
+        # print(area[self.rect.x, self.rect.y]) if area[self.rect.x, self.rect.y] else 0
         self.left, self.right, self.top, self.bottom = False, False, False, False
         for j in range(1, abs(x) + 1):
             if x2 - j <= 0:
@@ -387,9 +410,9 @@ class Pawn:
                 self.right = True
             else:
                 if not self.left:
-                    self.left = all([visible_area[x2 - j, i] for i in range(y2, y2 + h)])
+                    self.left = all([area[camerax + x2 - j, cameray + i] for i in range(y2, y2 + h)])
                 if not self.right:
-                    self.right = all([visible_area[x2 + w + j, i] for i in range(y2, y2 + h)])
+                    self.right = all([area[camerax + x2 + w + j, cameray + i] for i in range(y2, y2 + h)])
 
             if self.left:
                 lastx = -j + 1
@@ -405,9 +428,9 @@ class Pawn:
                 self.bottom = True
             else:
                 if not self.top:
-                    self.top = all([visible_area[i, y2 - j] for i in range(x2, x2 + w)])
+                    self.top = all([area[camerax + i, cameray + y2 - j] for i in range(x2, x2 + w)])
                 if not self.bottom:
-                    self.bottom = all([visible_area[i, y2 + h + j] for i in range(x2, x2 + w)])
+                    self.bottom = all([area[camerax + i, cameray + y2 + h + j] for i in range(x2, x2 + w)])
                 flg = 1
             if self.top:
                 lasty = -j + 1
@@ -426,29 +449,34 @@ class Pawn:
         else:
             self.y += lasty
 
-    def cam_targeting(self):
+    def cam_targeting(self, main):
         tx, ty = self.truecords
-        r1, r2 = game.camera.cam_x if self.xcamflg else self.x, game.camera.cam_y if self.ycamflg else self.y
-        x = game.camera.set(r1, r2)
-        camx, camy = game.camera.cam_x, game.camera.cam_y
-        if x[0] == 1 or self.rect.x > tx + abs(self.horizontal_speed):
-            self.xcamflg = 1
-            self.rect.x = self.x - camx + tx
-        elif x[0] == -1 or self.rect.x < tx - abs(self.horizontal_speed):
-            self.xcamflg = -1
-            self.rect.x = self.x - camx + tx
+        if main:
+            r1, r2 = game.camera.cam_x if self.xcamflg else self.x, game.camera.cam_y if self.ycamflg else self.y
+            x = game.camera.set(r1, r2)
+            camx, camy = game.camera.cam_x, game.camera.cam_y
+            if x[0] == 1 or self.rect.x > tx + abs(self.horizontal_speed):
+                self.xcamflg = 1
+                self.rect.x = self.x - camx + tx
+            elif x[0] == -1 or self.rect.x < tx - abs(self.horizontal_speed):
+                self.xcamflg = -1
+                self.rect.x = self.x - camx + tx
+            else:
+                self.xcamflg = 0
+                # self.rect.x = tx
+            if x[1] == 1 or self.rect.y > ty + abs(self.vertical_speed):
+                self.ycamflg = 1
+                self.rect.y = self.y - camy + ty
+            elif x[1] == -1 or self.rect.y < ty - abs(self.vertical_speed):
+                self.ycamflg = -1
+                self.rect.y = self.y - camy + ty
+            else:
+                self.ycamflg = 0
+                # self.rect.y = ty
         else:
-            self.xcamflg = 0
-            # self.rect.x = tx
-        if x[1] == 1 or self.rect.y > ty + abs(self.vertical_speed):
-            self.ycamflg = 1
+            camx, camy = game.camera.cam_x, game.camera.cam_y
+            self.rect.x = self.x - camx + tx
             self.rect.y = self.y - camy + ty
-        elif x[1] == -1 or self.rect.y < ty - abs(self.vertical_speed):
-            self.ycamflg = -1
-            self.rect.y = self.y - camy + ty
-        else:
-            self.ycamflg = 0
-            # self.rect.y = ty
 
     def events_check(self):
         keyboard = pygame.key.get_pressed()
@@ -510,17 +538,21 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.main_chr = 1
         self.HP = self.maxHP
         animsforinfo = self.animations.copy()
-        animsforinfo = list(map(lambda i: list(map(lambda j: j[1:], i)), animsforinfo))
-        self.info = [self.HP, self.maxHP, self.name, self.pic, animsforinfo, self.animation_counter]
+        animsforinfo = list(map(lambda i: list(map(lambda j: j[1:], i)), animsforinfo.copy()))
+        self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
+                     self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
 
     def update(self):
         if self.main_chr:
-            self.cam_targeting()
             self.events_check()
+        self.cam_targeting(self.main_chr)
+
         self.physics()
         # self.rect.x, self.rect.y = self.x, self.y
         self.animation_update()
         self.group.draw(screen)
+        self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
+                     self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
 
     def control(self, keys):
         speed = 3
