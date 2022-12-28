@@ -97,7 +97,7 @@ class Main:
         self.events = []
         self.connected = 0
         self.pack = None
-        self.host = True
+        self.host = False
         self.multiplayer_flg = 0
 
     def update(self):
