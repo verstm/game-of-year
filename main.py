@@ -22,6 +22,7 @@ ASSETS_PATH = 'Assets/'
 controls = [[pg.K_w, pg.K_d, pg.K_s, pg.K_a, pg.K_SPACE, pg.KMOD_SHIFT]]
 G = 1
 
+print(pygame.mouse.get_pressed())
 
 
 # xd
@@ -93,8 +94,6 @@ class Main:
         self.camera = Camera()
         self.pers1 = Human()
         self.pers2 = Human()
-        self.pers1.enemy = self.pers2
-        self.pers2.enemy = self.pers1
         self.pers2.main_chr = 0
         self.pers2.rect.x, self.pers2.rect.y = self.pers1.truecords
         self.gui = GUI(self.pers1, self.pers2)
@@ -398,8 +397,6 @@ class Pawn:
         self.left, self.right, self.top, self.bottom = 0, 0, 0, 0
         self.cd = {self.attack: 0}
         self.maxcd = {self.attack: 25}
-        self.stun_cnt = 0
-        self.hang_cnt = 0
 
     def move(self, x, y):
         # print(x, y)
@@ -513,10 +510,7 @@ class Pawn:
             self.vertical_speed += self.grav_accel
         self.horizontal_speed = 0 if abs(self.horizontal_speed) < 1 else self.horizontal_speed
         self.vertical_speed = 0 if abs(self.vertical_speed) < 1 else self.vertical_speed
-        if self.hang_cnt:
-            self.vertical_speed = 0
-            self.horizontal_speed = 0
-            self.hang_cnt -= 1
+
     def animation_update(self):
         # print(self.animation_counter, self.horizontal_speed)
         if self.animation_counter[0] >= 0:
@@ -527,8 +521,6 @@ class Pawn:
                 self.animation_counter[1] += 1
 
     def knockback(self, alpha, velocity):
-        if not self.onfloor:
-            velocity /= 3
         self.vertical_speed -= velocity * sin(alpha / 57.3)
         self.horizontal_speed += velocity * cos(alpha / 57.3)
 
@@ -541,8 +533,6 @@ class Pawn:
                     self.cd[key] = 0
 
     def attack(self, alpha):
-        self.enemy.stun_cnt = max(30, self.enemy.stun_cnt)
-        self.enemy.hang_cnt = max(30, self.enemy.hang_cnt)
         self.cd[self.attack] = 1
         if alpha > 340 or alpha <= 20:
             self.animation_counter = [2, 0]
@@ -598,8 +588,7 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.HP = self.maxHP
         self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
                      self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
-        self.enemy = ''
-        self.enemygroup = ''
+        
 
     def update(self):
         if self.main_chr:
@@ -620,51 +609,44 @@ class Human(Pawn, pygame.sprite.Sprite):
         keys_1 = pygame.key.get_pressed()
         if keys_1[pygame.K_h]:
             self.HP -= 1
-        if not self.stun_cnt:
-            if 0 in keys:
-                ...
-                # self.move(0, -speed)
-            if 2 in keys:
-                ...
-                # self.move(0, speed)
-            if 1 in keys and self.bottom:
-                self.horizontal_speed += speed
-                self.animation_counter[0] = 1
-                # self.move(speed, 0)
-            if 3 in keys and self.bottom:
-                self.horizontal_speed -= speed
-                self.animation_counter[0] = 0
-                # self.move(-speed, 0)
-            if 4 in keys and (self.jumpflg or self.bottom) and self.vertical_speed > -15:
-                self.jumpflg = 1
-                self.vertical_speed += -self.jump_power
-            else:
-                self.jumpflg = 0
-            if self.horizontal_speed == 0:
-                self.animation_counter[0] = -1
-                self.animation_counter[1] = 0
-            if keys_1[pygame.K_b]:
-                self.debug_stun()
-            if mouse[0] and self.cd[self.attack] == 0:
-                pos = pygame.mouse.get_pos()
-                x = pos[0] - self.rect.center[0]
-                y = self.rect.center[1] - pos[1]
-                sinalpha = y / hypot(x, y)
-                cosalpha = x / hypot(x, y)
-                #print(cosalpha)
-                if sinalpha < 0:
-                    cosalpha = -cosalpha
-                alpha = acos(cosalpha) * 57.3
-                if sinalpha < 0:
-                    alpha += 180
-                self.attack(alpha)
+        if 0 in keys:
+            ...
+            # self.move(0, -speed)
+        if 2 in keys:
+            ...
+            # self.move(0, speed)
+        if 1 in keys and self.bottom:
+            self.horizontal_speed += speed
+            self.animation_counter[0] = 1
+            # self.move(speed, 0)
+        if 3 in keys and self.bottom:
+            self.horizontal_speed -= speed
+            self.animation_counter[0] = 0
+            # self.move(-speed, 0)
+        if 4 in keys and (self.jumpflg or self.bottom) and self.vertical_speed > -15:
+            self.jumpflg = 1
+            self.vertical_speed += -self.jump_power
         else:
-            print('here')
-            self.stun_cnt -= 1
+            self.jumpflg = 0
+        if self.horizontal_speed == 0:
+            self.animation_counter[0] = -1
+            self.animation_counter[1] = 0
+        if mouse[0] and self.cd[self.attack] == 0:
+            pos = pygame.mouse.get_pos()
+            x = pos[0] - self.rect.center[0]
+            y = self.rect.center[1] - pos[1]
+            sinalpha = y / hypot(x, y)
+            cosalpha = x / hypot(x, y)
+            #print(cosalpha)
+            if sinalpha < 0:
+                cosalpha = -cosalpha
+            alpha = acos(cosalpha) * 57.3
+            if sinalpha < 0:
+                alpha += 180
+            print(alpha)
+            self.attack(alpha)
 
-    def debug_stun(self):
-        self.stun_cnt = max(30, self.stun_cnt)
-        self.hang_cnt = max(30, self.hang_cnt)
+
 
 game = Main()
 
@@ -672,7 +654,6 @@ while running:
     screen.fill((0, 0, 0))
     for event in pg.event.get():
         if event.type == pg.WINDOWCLOSE:
-            exit(0)
             running = False
 
     game.update()
