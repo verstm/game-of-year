@@ -727,13 +727,13 @@ class Human(Pawn, pygame.sprite.Sprite):
         if time.time() - self.last_combo_time >= self.combo_expiration:
             self.combo = [self.combo[-1]]
         if self.combo == [1]:
-            self.set_animation(self.combo1_1_right, False, 3)
+            self.set_animation(self.combo1_1_right, False, 4)
         if self.combo == [1, 1]:
-            self.set_animation(self.combo1_2_right, False, 2)
+            self.set_animation(self.combo1_2_right, False, 3)
         if self.combo == [1, 1, 1]:
-            self.set_animation(self.combo1_3_right, False, 3)
+            self.set_animation(self.combo1_3_right, False, 4)
         if self.combo == [1, 1, 1, 1]:
-            self.set_animation(self.combo1_3_right, False, 3)
+            self.set_animation(self.combo1_3_right, False, 4)
             self.combo = []
         self.last_combo_time = time.time()
 
