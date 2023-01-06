@@ -383,6 +383,8 @@ class Pawn:
         pygame.sprite.Sprite.__init__(self)
         self.group = pygame.sprite.Group()
         self.group.add(self)
+        self.animation_counter = [0, 1]
+        self.current_animation = None
         self.controls_num = 0
         self.horizontal_speed = 0
         self.vertical_speed = 0
@@ -523,13 +525,20 @@ class Pawn:
             self.hang_cnt -= 1
 
     def animation_update(self):
-        # print(self.animation_counter, self.horizontal_speed)
-        if self.animation_counter[0] >= 0:
-            self.image = self.animations[self.animation_counter[0]][self.animation_counter[1]]
-            if self.animation_counter[1] == len(self.animations[self.animation_counter[0]]) - 1:
-                self.animation_counter[1] = 0
-            else:
-                self.animation_counter[1] += 1
+        animlen = len(self.current_animation)
+        if self.animation_counter[0] < animlen:
+            self.image = self.current_animation[self.animation_counter[0]]
+            self.animation_counter[0] += 1
+        else:
+            if self.animation_counter[1]:
+                self.animation_counter[0] = 0
+
+    def set_animation(self, animation, loop=True):
+        if self.current_animation != animation:
+            self.current_animation = animation
+            self.animation_counter[0] = 0
+            if loop:
+                self.animation_counter[1] = 1
 
     def knockback(self, alpha, velocity):
         if not self.onfloor:
@@ -551,28 +560,22 @@ class Pawn:
         self.enemy.hang_cnt = max(30, self.enemy.hang_cnt)
         self.cd[self.attack] = 1
         if alpha > 340 or alpha <= 20:
-            self.animation_counter = [4, 0]
             self.knockback(0, 15)
         elif alpha > 20 and alpha <= 90:
-            self.animation_counter = [5, 0]
             if self.onfloor:
                 self.knockback(alpha, 50)
             else:
                 self.knockback(alpha, 15)
         elif alpha > 90 and alpha <= 160:
-            self.animation_counter = [6, 0]
             if self.onfloor:
                 self.knockback(alpha, 50)
             else:
                 self.knockback(alpha, 15)
         elif alpha > 160 and alpha <= 220:
-            self.animation_counter = [7, 0]
             self.knockback(180, 15)
         elif alpha > 220 and alpha <= 270:
-            self.animation_counter = [8, 0]
             self.knockback(alpha, 15)
         elif alpha > 270 and alpha <= 340:
-            self.animation_counter = [9, 0]
             self.knockback(alpha, 15)
 
 
@@ -584,7 +587,7 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.image = pg.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')
         self.idle_right = [pg.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')]
         self.idle_left = [pg.transform.flip(pg.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png'), True, False)]
-
+        self.current_animation = self.idle_right
         self.rect = self.image.get_rect()
         self.runanimation_right = [pygame.image.load(animpath_run + f'{i}.png') for i in range(1, 7)]
         self.runanimation_left = [pygame.transform.flip(pygame.image.load(animpath_run + f'{i}.png'), True, False) for i
@@ -621,7 +624,6 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.enemygroup = ''
 
     def update(self):
-        print(self.horizontal_speed)
         if self.main_chr:
             self.events_check()
         self.cam_targeting(self.main_chr)
@@ -637,13 +639,17 @@ class Human(Pawn, pygame.sprite.Sprite):
 
     def control(self, keys, mouse):
         speed = 3
+        right, left = 1, 3
         keys_1 = pygame.key.get_pressed()
-        if self.animation_counter[0] == 2 and not 3 in keys:
-            self.animation_counter = [11, 0]
-        if self.animation_counter[0] == 3 and not 1 in keys:
-            self.animation_counter = [10, 0]
+        if self.current_animation == self.runanimation_right and not right in keys:
+            self.set_animation(self.stoppinganimation_right, True)
+        if self.current_animation == self.runanimation_left and not left in keys:
+            self.set_animation(self.stoppinganimation_left, True)
         if self.horizontal_speed == 0:
-            self.animation_counter = [0, 0] if self.last_direction else [1, 0]
+            if self.last_direction == 1:
+                self.set_animation(self.idle_right, True)
+            else:
+                self.set_animation(self.idle_left, True)
         if keys_1[pygame.K_h]:
             self.HP -= 1
         if not self.stun_cnt:
@@ -653,13 +659,13 @@ class Human(Pawn, pygame.sprite.Sprite):
             if 2 in keys:
                 ...
                 # self.move(0, speed)
-            if 1 in keys and self.bottom:
+            if right in keys and self.bottom:
                 self.horizontal_speed += speed
-                self.animation_counter[0] = 3
+                self.set_animation(self.runanimation_right)
                 # self.move(speed, 0)
-            if 3 in keys and self.bottom:
+            if left in keys and self.bottom:
                 self.horizontal_speed -= speed
-                self.animation_counter[0] = 2
+                self.set_animation(self.runanimation_left)
                 # self.move(-speed, 0)
 
             if 4 in keys and (self.jumpflg or self.bottom) and self.vertical_speed > -15:
