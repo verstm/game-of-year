@@ -9,6 +9,7 @@ import threading
 from socket import socket, AF_INET, SOCK_DGRAM
 from net_functions import *
 from copy import copy, deepcopy
+import time
 
 pg.init()
 true_width, true_height = pygame.display.Info().current_w, pygame.display.Info().current_h
@@ -383,9 +384,13 @@ class Pawn:
         pygame.sprite.Sprite.__init__(self)
         self.group = pygame.sprite.Group()
         self.group.add(self)
+        self.combo = []
+        self.last_combo_time = time.time()
         self.animation_counter = [0, 1]
+        self.default_animation = None
         self.current_animation = None
         self.controls_num = 0
+        self.animframes_divisor = 1
         self.horizontal_speed = 0
         self.vertical_speed = 0
         self.last_direction = 1
@@ -398,8 +403,8 @@ class Pawn:
         self.cam_xlock, self.cam_ylock = 0, 0
         self.xcamflg, self.ycamflg = 0, 0
         self.left, self.right, self.top, self.bottom = 0, 0, 0, 0
-        self.cd = {self.attack: 0}
-        self.maxcd = {self.attack: 25}
+        self.cd = {self.mouse: 0}
+        self.maxcd = {self.mouse: 15}
         self.stun_cnt = 0
         self.hang_cnt = 0
 
@@ -526,19 +531,26 @@ class Pawn:
 
     def animation_update(self):
         animlen = len(self.current_animation)
-        if self.animation_counter[0] < animlen:
-            self.image = self.current_animation[self.animation_counter[0]]
+        if self.animation_counter[0] / self.animframes_divisor < animlen:
+            self.image = self.current_animation[self.animation_counter[0] // self.animframes_divisor]
             self.animation_counter[0] += 1
         else:
             if self.animation_counter[1]:
                 self.animation_counter[0] = 0
+            else:
+                self.current_animation = self.default_animation()
+                self.animation_counter[0] = 0
+                self.animframes_divisor = 1
 
-    def set_animation(self, animation, loop=True):
+    def set_animation(self, animation, loop=True, div=1):
         if self.current_animation != animation:
+            self.animframes_divisor = div
             self.current_animation = animation
             self.animation_counter[0] = 0
             if loop:
                 self.animation_counter[1] = 1
+            else:
+                self.animation_counter[1] = 0
 
     def knockback(self, alpha, velocity):
         if not self.onfloor:
@@ -555,28 +567,23 @@ class Pawn:
                 else:
                     self.cd[key] = 0
 
-    def attack(self, alpha):
+    def mouse(self, alpha):
         self.enemy.stun_cnt = max(30, self.enemy.stun_cnt)
         self.enemy.hang_cnt = max(30, self.enemy.hang_cnt)
-        self.cd[self.attack] = 1
+        self.cd[self.mouse] = 1
         if alpha > 340 or alpha <= 20:
-            self.knockback(0, 15)
+            self.combo.append(1)
         elif alpha > 20 and alpha <= 90:
-            if self.onfloor:
-                self.knockback(alpha, 50)
-            else:
-                self.knockback(alpha, 15)
+            self.combo.append(-3)
         elif alpha > 90 and alpha <= 160:
-            if self.onfloor:
-                self.knockback(alpha, 50)
-            else:
-                self.knockback(alpha, 15)
-        elif alpha > 160 and alpha <= 220:
-            self.knockback(180, 15)
-        elif alpha > 220 and alpha <= 270:
-            self.knockback(alpha, 15)
+            self.combo.append(-2)
+        elif alpha > 160 and alpha <= 200:
+            self.combo.append(-1)
+        elif alpha > 200 and alpha <= 270:
+            self.combo.append(3)
         elif alpha > 270 and alpha <= 340:
-            self.knockback(alpha, 15)
+            self.combo.append(2)
+        self.attack()
 
 
 class Human(Pawn, pygame.sprite.Sprite):
@@ -586,13 +593,17 @@ class Human(Pawn, pygame.sprite.Sprite):
         animpath_atk = ASSETS_PATH + 'sprites/Animations/attacking/'
         self.image = pg.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')
         self.idle_right = [pg.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')]
-        self.idle_left = [pg.transform.flip(pg.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png'), True, False)]
-        self.current_animation = self.idle_right
+        self.idle_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.idle_right))
+        self.default_animation = lambda: self.idle_right if self.last_direction else self.idle_left
+        self.current_animation = self.default_animation()
         self.rect = self.image.get_rect()
         self.runanimation_right = [pygame.image.load(animpath_run + f'{i}.png') for i in range(1, 7)]
-        self.runanimation_left = [pygame.transform.flip(pygame.image.load(animpath_run + f'{i}.png'), True, False) for i
-                                  in
-                                  range(1, 7)]
+        self.runanimation_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.runanimation_right))
+        self.stoppinganimation_right = [pygame.image.load(ASSETS_PATH + 'Sprites/stopping.png')]
+        self.stoppinganimation_left = list(
+            map(lambda i: pygame.transform.flip(i, True, False), self.stoppinganimation_right))
+
+        '''
         self.atkanimation_right = [pygame.image.load(animpath_atk + f'pr_{i}.png') for i in range(1, 6)]
         self.atkanimation_left = [pygame.transform.flip(pygame.image.load(animpath_atk + f'pr_{i}.png'), True, False)
                                   for i in range(1, 6)]
@@ -602,15 +613,26 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.atkanimation_downright = [pygame.image.load(animpath_atk + f'pdr_{i}.png') for i in range(1, 6)]
         self.atkanimation_downleft = [
             pygame.transform.flip(pygame.image.load(animpath_atk + f'pdr_{i}.png'), True, False) for i in range(1, 6)]
-        self.stoppinganimation_right = [pygame.image.load(ASSETS_PATH + 'Sprites/stopping.png')]
-        self.stoppinganimation_left = [
-            pygame.transform.flip(pygame.image.load(ASSETS_PATH + 'Sprites/stopping.png'), True, False)]
+        
 
         self.animations = [self.idle_right, self.idle_left, self.runanimation_left, self.runanimation_right,
                            self.atkanimation_right,
                            self.atkanimation_upright, self.atkanimation_upleft, self.atkanimation_left,
                            self.atkanimation_downleft, self.atkanimation_downright, self.stoppinganimation_right,
-                           self.stoppinganimation_left]
+                           self.stoppinganimation_left]'''
+        self.combo1_1_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1/attack1_{i}.png') for i in
+                               range(1, 4)]
+        self.combo1_2_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1/attack2_{i}.png') for i in
+                               range(1, 6)]
+        self.combo1_3_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1/attack3_{i}.png') for i in
+                               range(1, 2)]
+        self.combo1_4_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1/attack4_{i}.png') for i in
+                               range(1, 5)]
+        self.combo1_1_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_1_right))
+        self.combo1_2_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_2_right))
+        self.combo1_3_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_3_right))
+        self.combo1_4_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_4_right))
+
         self.animation_counter = [0, 0]
         self.moves = []
         self.pic = 'Human.png'
@@ -618,9 +640,11 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.maxHP = 1000
         self.main_chr = 1
         self.HP = self.maxHP
+        self.combo_expiration = 1
         self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
                      self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
         self.enemy = ''
+
         self.enemygroup = ''
 
     def update(self):
@@ -645,7 +669,8 @@ class Human(Pawn, pygame.sprite.Sprite):
             self.set_animation(self.stoppinganimation_right, True)
         if self.current_animation == self.runanimation_left and not left in keys:
             self.set_animation(self.stoppinganimation_left, True)
-        if self.horizontal_speed == 0:
+        if self.horizontal_speed == 0 and (
+                self.current_animation == self.stoppinganimation_right or self.current_animation == self.stoppinganimation_left):
             if self.last_direction == 1:
                 self.set_animation(self.idle_right, True)
             else:
@@ -676,19 +701,19 @@ class Human(Pawn, pygame.sprite.Sprite):
 
             if keys_1[pygame.K_b]:
                 self.debug_stun()
-            if mouse[0] and self.cd[self.attack] == 0:
+            if mouse[0] and self.cd[self.mouse] == 0:
                 pos = pygame.mouse.get_pos()
-                x = pos[0] - self.rect.center[0]
-                y = self.rect.center[1] - pos[1]
+                x = pos[0] - int(WIDTH // 2)
+                y = int(HEIGHT // 2) - pos[1]
                 sinalpha = y / hypot(x, y)
                 cosalpha = x / hypot(x, y)
-                # print(cosalpha)
                 if sinalpha < 0:
                     cosalpha = -cosalpha
                 alpha = acos(cosalpha) * 57.3
                 if sinalpha < 0:
                     alpha += 180
-                self.attack(alpha)
+                self.mouse(alpha)
+
         else:
             print('here')
             self.stun_cnt -= 1
@@ -696,6 +721,21 @@ class Human(Pawn, pygame.sprite.Sprite):
     def debug_stun(self):
         self.stun_cnt = max(30, self.stun_cnt)
         self.hang_cnt = max(30, self.hang_cnt)
+
+    def attack(self):
+        print(self.combo)
+        if time.time() - self.last_combo_time >= self.combo_expiration:
+            self.combo = [self.combo[-1]]
+        if self.combo == [1]:
+            self.set_animation(self.combo1_1_right, False, 3)
+        if self.combo == [1, 1]:
+            self.set_animation(self.combo1_2_right, False, 2)
+        if self.combo == [1, 1, 1]:
+            self.set_animation(self.combo1_3_right, False, 3)
+        if self.combo == [1, 1, 1, 1]:
+            self.set_animation(self.combo1_3_right, False, 3)
+            self.combo = []
+        self.last_combo_time = time.time()
 
 
 game = Main()
