@@ -602,24 +602,7 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.stoppinganimation_right = [pygame.image.load(ASSETS_PATH + 'Sprites/stopping.png')]
         self.stoppinganimation_left = list(
             map(lambda i: pygame.transform.flip(i, True, False), self.stoppinganimation_right))
-
-        '''
-        self.atkanimation_right = [pygame.image.load(animpath_atk + f'pr_{i}.png') for i in range(1, 6)]
-        self.atkanimation_left = [pygame.transform.flip(pygame.image.load(animpath_atk + f'pr_{i}.png'), True, False)
-                                  for i in range(1, 6)]
-        self.atkanimation_upright = [pygame.image.load(animpath_atk + f'pur_{i}.png') for i in range(1, 6)]
-        self.atkanimation_upleft = [pygame.transform.flip(pygame.image.load(animpath_atk + f'pur_{i}.png'), True, False)
-                                    for i in range(1, 6)]
-        self.atkanimation_downright = [pygame.image.load(animpath_atk + f'pdr_{i}.png') for i in range(1, 6)]
-        self.atkanimation_downleft = [
-            pygame.transform.flip(pygame.image.load(animpath_atk + f'pdr_{i}.png'), True, False) for i in range(1, 6)]
-        
-
-        self.animations = [self.idle_right, self.idle_left, self.runanimation_left, self.runanimation_right,
-                           self.atkanimation_right,
-                           self.atkanimation_upright, self.atkanimation_upleft, self.atkanimation_left,
-                           self.atkanimation_downleft, self.atkanimation_downright, self.stoppinganimation_right,
-                           self.stoppinganimation_left]'''
+        # не трогать сейчас перепишу
         self.combo1_1_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1/attack1_{i}.png') for i in
                                range(1, 4)]
         self.combo1_2_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1/attack2_{i}.png') for i in
@@ -724,6 +707,7 @@ class Human(Pawn, pygame.sprite.Sprite):
 
     def attack(self):
         print(self.combo)
+        print(self.combo1_1_right, self.combo1_2_right, self.combo1_3_right, self.combo1_4_right)
         if time.time() - self.last_combo_time >= self.combo_expiration:
             self.combo = [self.combo[-1]]
         if self.combo == [1]:
