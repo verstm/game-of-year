@@ -377,6 +377,7 @@ class Object:
         pass
 
 
+
 class Pawn:
     def __init__(self):
         self.truecords = (WIDTH // 2, HEIGHT // 2)
@@ -404,7 +405,7 @@ class Pawn:
         self.xcamflg, self.ycamflg = 0, 0
         self.left, self.right, self.top, self.bottom = 0, 0, 0, 0
         self.cd = {self.mouse: 0}
-        self.maxcd = {self.mouse: FPS//3}
+        self.maxcd = {self.mouse: FPS // 4}
         self.stun_cnt = 0
         self.hang_cnt = 0
 
@@ -532,7 +533,7 @@ class Pawn:
     def animation_update(self):
         animlen = len(self.current_animation)
         if self.animation_counter[0] / self.animframes_divisor < animlen:
-            self.image = self.current_animation[self.animation_counter[0] // self.animframes_divisor]
+            self.image = self.current_animation[int(self.animation_counter[0] / self.animframes_divisor)]
             self.animation_counter[0] += 1
         else:
             if self.animation_counter[1]:
@@ -602,20 +603,19 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.stoppinganimation_right = [pygame.image.load(ASSETS_PATH + 'Sprites/stopping.png')]
         self.stoppinganimation_left = list(
             map(lambda i: pygame.transform.flip(i, True, False), self.stoppinganimation_right))
-        # не трогать сейчас перепишу
-        self.combo1_1_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_1/attack1_{i}.png') for i in
+        self.combo1_1_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_1/{i}.png') for i in
                                range(1, len(list(os.walk(ASSETS_PATH + f'Sprites/Animations/combo_1_1/'))[0][2]) + 1)]
-        self.combo1_2_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_2/attack2_{i}.png') for i in
+        self.combo1_2_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_2/{i}.png') for i in
                                range(1, len(list(os.walk(ASSETS_PATH + f'Sprites/Animations/combo_1_2/'))[0][2]) + 1)]
-        self.combo1_3_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_3/attack3_{i}.png') for i in
+        self.combo1_3_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_3/{i}.png') for i in
                                range(1, len(list(os.walk(ASSETS_PATH + f'Sprites/Animations/combo_1_3/'))[0][2]) + 1)]
-        self.combo1_4_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_4/attack4_{i}.png') for i in
+        self.combo1_4_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_4/{i}.png') for i in
                                range(1, len(list(os.walk(ASSETS_PATH + f'Sprites/Animations/combo_1_4/'))[0][2]) + 1)]
         self.combo1_1_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_1_right))
         self.combo1_2_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_2_right))
         self.combo1_3_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_3_right))
         self.combo1_4_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_4_right))
-
+        self.combocd = [0.2]
         self.animation_counter = [0, 0]
         self.moves = []
         self.pic = 'Human.png'
@@ -708,18 +708,24 @@ class Human(Pawn, pygame.sprite.Sprite):
     def attack(self):
         print(self.combo)
         print(self.combo1_1_right, self.combo1_2_right, self.combo1_3_right, self.combo1_4_right)
+
         if time.time() - self.last_combo_time >= self.combo_expiration:
             self.combo = [self.combo[-1]]
-        if self.combo == [1]:
-            self.set_animation(self.combo1_1_right, False, 4)
-        if self.combo == [1, 1]:
-            self.set_animation(self.combo1_2_right, False, 3)
-        if self.combo == [1, 1, 1]:
-            self.set_animation(self.combo1_3_right, False, 4)
-        if self.combo == [1, 1, 1, 1]:
-            self.set_animation(self.combo1_3_right, False, 4)
-            self.combo = []
-        self.last_combo_time = time.time()
+        if time.time() - self.last_combo_time >= self.combocd[0]:
+            if self.combo == [1]:
+                self.set_animation(self.combo1_1_right, False, 0.5)
+            elif self.combo == [1, 1]:
+                self.set_animation(self.combo1_2_right, False, 0.5)
+            elif self.combo == [1, 1, 1]:
+                self.set_animation(self.combo1_3_right, False, 0.5)
+            elif self.combo == [1, 1, 1, 1]:
+                self.set_animation(self.combo1_4_right, False, 0.5)
+                self.combo = []
+            else:
+                self.combo = []
+            self.last_combo_time = time.time()
+        else:
+            self.combo.pop(-1)
 
 
 game = Main()
