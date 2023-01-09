@@ -22,6 +22,7 @@ screen = pg.display.set_mode((WIDTH, HEIGHT))
 ASSETS_PATH = 'Assets/'
 controls = [[pg.K_w, pg.K_d, pg.K_s, pg.K_a, pg.K_SPACE, pg.KMOD_SHIFT]]
 G = 1
+DEBUG = True
 
 
 # xd
@@ -95,6 +96,12 @@ class Main:
         self.pers2 = Human()
         self.pers1.enemy = self.pers2
         self.pers2.enemy = self.pers1
+        self.pers1_group = pygame.sprite.Group()
+        self.pers1_group.add(self.pers1)
+        self.pers2_group = pygame.sprite.Group()
+        self.pers2_group.add(self.pers2)
+        self.pers1.enemygroup = self.pers2_group
+        self.pers2.enemygroup = self.pers1_group
         self.pers2.main_chr = 0
         self.pers2.rect.x, self.pers2.rect.y = self.pers1.truecords
         self.gui = GUI(self.pers1, self.pers2)
@@ -586,6 +593,21 @@ class Pawn:
             self.combo.append(2)
         self.attack()
 
+    def attack_hitbox(self, x1, y1, x2, y2):
+        self.atk_hitbox = pygame.sprite.Sprite()
+        self.atk_hitbox.image = pygame.Surface((x2-x1, y2-y1))
+        self.atk_hitbox.rect = self.atk_hitbox.image.get_rect()
+        self.atk_hitbox.rect.x = x1
+        print(x1, self.rect.x)
+        self.atk_hitbox.rect.y = y1
+        if DEBUG:
+            self.atk_hitbox.image.fill((255, 0, 0))
+            screen.blit(self.atk_hitbox.image, self.atk_hitbox.rect)
+        hits = pygame.sprite.spritecollide(self.atk_hitbox, self.enemygroup, False)
+        for hit in hits:
+            hit.HP -= 228
+
+
 
 class Human(Pawn, pygame.sprite.Sprite):
     def __init__(self):
@@ -706,9 +728,9 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.hang_cnt = max(30, self.hang_cnt)
 
     def attack(self):
-        print(self.combo)
-        print(self.combo1_1_right, self.combo1_2_right, self.combo1_3_right, self.combo1_4_right)
-
+        #print(self.combo)
+        #print(self.combo1_1_right, self.combo1_2_right, self.combo1_3_right, self.combo1_4_right)
+        self.attack_hitbox(self.rect.x, self.rect.y, self.rect.x + 100, self.rect.y + 200)
         if time.time() - self.last_combo_time >= self.combo_expiration:
             self.combo = [self.combo[-1]]
         if time.time() - self.last_combo_time >= self.combocd[0]:
