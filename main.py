@@ -94,14 +94,7 @@ class Main:
         self.camera = Camera()
         self.pers1 = Human()
         self.pers2 = Human()
-        self.pers1.enemy = self.pers2
-        self.pers2.enemy = self.pers1
-        self.pers1_group = pygame.sprite.Group()
-        self.pers1_group.add(self.pers1)
-        self.pers2_group = pygame.sprite.Group()
-        self.pers2_group.add(self.pers2)
-        self.pers1.enemygroup = self.pers2_group
-        self.pers2.enemygroup = self.pers1_group
+        self.set_enemies()
         self.pers2.main_chr = 0
         self.pers2.rect.x, self.pers2.rect.y = self.pers1.truecords
         self.gui = GUI(self.pers1, self.pers2)
@@ -114,15 +107,16 @@ class Main:
 
     def update(self):
         self.events = []
-        if self.mode == 0:
-            self.mode = self.menu.update()
-        if self.mode == 1:
+        if self.mode < 2:
+            self.mode, self.pers1 = self.menu.update()
+            self.set_enemies()
+        if self.mode == 2:
             self.map.update()
             self.camera.update()
             self.pers1.update()
             self.pers2.update()
             self.gui.update(self.pers1, self.pers2)
-        if self.mode == 2:
+        if self.mode == 3:
             if self.connected and self.pack:
                 self.check_pack()
             else:
@@ -144,12 +138,12 @@ class Main:
             self.pers2.update()
             self.gui.update(self.pers1, self.pers2)
             if self.pers1.HP <= 0:
-                self.mode = 3
+                self.mode = 4
             if self.pers2.HP <= 0:
-                self.mode = 3
+                self.mode = 4
             # self.pers1.HP -= 1
             # self.pers2.HP -= 1
-        if self.mode == 3:
+        if self.mode == 4:
             print('GAME OVER!!!')
         self.info = [self.pers1.info]
 
@@ -164,13 +158,13 @@ class Main:
             characters[i].maxHP = pack[i][1]
             characters[i].name = pack[i][2]
             characters[i].pic = pack[i][3]
-            '''anims = deepcopy(pack[i][4])
+            anims = deepcopy(pack[i][4])
             for x in range(len(anims)):
                 for y in range(len(anims[x])):
                     # print(anims[x][y])
                     anims[x][y] = (pg.image.load(anims[x][y][0]) if anims[x][y][-1] > 0 else pygame.transform.flip(
                         pg.image.load(anims[x][y][0]), True, False), anims[x][y][0], anims[x][y][-1])
-            characters[i].animations = anims.copy()'''
+            characters[i].animations = anims.copy()
             characters[i].animation_counter = pack[i][4].copy()
             characters[i].vertical_speed = pack[i][5]
             characters[i].horizontal_speed = pack[i][6]
@@ -179,6 +173,16 @@ class Main:
             # characters[i].rect.x = pack[i][7]
             # characters[i].rect.y = pack[i][8]
     # def information_gathering(self):
+
+    def set_enemies(self):
+        self.pers1.enemy = self.pers2
+        self.pers2.enemy = self.pers1
+        self.pers1_group = pygame.sprite.Group()
+        self.pers1_group.add(self.pers1)
+        self.pers2_group = pygame.sprite.Group()
+        self.pers2_group.add(self.pers2)
+        self.pers1.enemygroup = self.pers2_group
+        self.pers2.enemygroup = self.pers1_group
 
 
 class GUI:
@@ -316,17 +320,134 @@ class Map:
 
 class Menu:
     def __init__(self):
+        self.characters = [Human()]
+        self.pers = 0
         print('menu initialized')
+        self.screen_rect = screen.get_rect()
+
+        self.pers_menu = Human()
+        self.pers_menu.rect.x = WIDTH + 1
+        self.pers_menu.rect.centery = self.screen_rect.centery
+
+        self.pers_tmp = Human()
+        self.pers_tmp.rect.x = WIDTH + 1
+        self.pers_tmp.rect.centery = self.screen_rect.centery
+
+        self.mode = 0
+        self.font_btns = pygame.font.Font(None, 30)
+        self.t_play = self.font_btns.render('Играть с друзьями', False, (255, 255, 255))
+        screen_rect = screen.get_rect()
+
+        self.t_play_rect = self.t_play.get_rect()
+        self.t_play_rect.center = screen_rect.center
+        self.t_play_rect.y -= screen_rect.height // 5
+        
+        self.t_exit = self.font_btns.render('У меня нет друзей', False, (255, 255, 255))
+        self.t_exit_rect = self.t_exit.get_rect()
+        self.t_exit_rect.center = screen_rect.center
+        self.t_exit_rect.y += screen_rect.height // 5
+
+        self.t_start = self.font_btns.render('ИГРАТЬ', False, (0, 0, 255))
+        self.t_start_rect = self.t_start.get_rect()
+        self.t_start_rect.center = screen_rect.center
+        self.t_start_rect.y += screen_rect.height // 5
+
+        self.update_pers()
+
+        self.thrown_flag = False
 
     def update(self):
-        btn = self.check_buttons()
-        if btn == 1:
-            return 1
-        elif btn == 2:
-            return 2
+        if not self.mode:
+            screen.fill((0, 0, 0))
+            screen.blit(self.t_play, self.t_play_rect)
+            screen.blit(self.t_exit, self.t_exit_rect)
+        else:
+            screen.fill((0, 0, 0))
+            screen.blit(self.image_pers, self.image_pers_rect)
+            screen.blit(self.pers_name, self.pers_name_rect)
+            screen.blit(self.arrow_left, self.arrow_left_rect)
+            screen.blit(self.arrow_right, self.arrow_right_rect)
+            screen.blit(self.pers_menu.image, self.pers_menu.rect)
+            screen.blit(self.pers_tmp.image, self.pers_tmp.rect)
+            if self.pers_menu.rect.centerx > WIDTH // 2:
+                self.pers_menu.rect.centerx -= 10
+            if self.thrown_flag:
+                self.pers_menu.rect.y -= 30
+                if self.pers_tmp.rect.centerx > WIDTH // 2:
+                    self.pers_tmp.rect.centerx -= 10
+                else:
+                    self.thrown_flag = False
+                    self.pers_menu.rect.x = self.pers_tmp.rect.x
+                    self.pers_menu.rect.centery = self.screen_rect.centery
+                    self.pers_tmp.rect.x = WIDTH + 1
+        return self.check_buttons(), self.pers_menu
+
 
     def check_buttons(self):
-        return 2
+        mouse = pygame.mouse.get_pos()
+        pressed_mouse = pygame.mouse.get_pressed()
+        if not self.mode:
+            if self.t_play_rect.x < mouse[0] < self.t_play_rect.x + self.t_play_rect.width and self.t_play_rect.y < mouse[1] < self.t_play_rect.y + self.t_play_rect.height:
+                self.t_play = self.font_btns.render('ИГРАТЬ C ДРУЗЬЯМИ', False, (255, 0, 0))
+                if pressed_mouse[0]:
+                    self.mode += 1
+                return self.mode
+            elif self.t_exit_rect.x < mouse[0] < self.t_exit_rect.x + self.t_exit_rect.width and self.t_exit_rect.y < mouse[1] < self.t_exit_rect.y + self.t_exit_rect.height:
+                self.t_exit = self.font_btns.render('У МЕНЯ НЕТ ДРУЗЕЙ', False, (255, 0, 0))
+                if pressed_mouse[0]:
+                    exit(0)
+            else:
+                self.t_play = self.font_btns.render('ИГРАТЬ С ДРУЗЬЯМИ', False, (255, 255, 255))
+                self.t_exit = self.font_btns.render('У МЕНЯ НЕТ ДРУЗЕЙ', False, (255, 255, 255))
+        elif self.mode == 1:
+            if self.arrow_left_rect.x < mouse[0] < self.arrow_left_rect.right and self.arrow_left_rect.y < mouse[1] < self.arrow_left_rect.bottom:
+                self.arrow_left = self.font_btns.render('<', False, (255, 0, 0))
+                if pressed_mouse[0]:
+                    self.change_pers(-1)
+                    
+            elif self.arrow_right_rect.x < mouse[0] < self.arrow_right_rect.right and self.arrow_right_rect.y < mouse[1] < self.arrow_right_rect.bottom:
+                self.arrow_right = self.font_btns.render('>', False, (255, 0, 0))
+                if pressed_mouse[0]:
+                    self.change_pers(1)
+            elif self.pers_name_rect.x < mouse[0] < self.pers_name_rect.right and self.pers_name_rect.y < mouse[1] < self.pers_name_rect.bottom:
+                self.pers_name = self.font_btns.render(self.characters[self.pers].name, False, (255, 0, 0))
+                if pressed_mouse[0]:
+                    self.mode += 1
+            else:
+                self.arrow_left = self.font_btns.render('<', False, (255, 255, 255))
+                self.arrow_right = self.font_btns.render('>', False, (255, 255, 255))
+                self.pers_name = self.font_btns.render(self.characters[self.pers].name, False, (255, 255, 255))
+        return self.mode
+    
+    def change_pers(self, n):
+        self.thrown_flag = True
+        self.pers += n
+        self.pers %= len(self.characters)
+        self.update_pers()
+
+    def update_pers(self):
+        path = os.path.join(os.path.dirname(__file__), 'Assets')
+        path = os.path.join(path, 'Sprites')
+        self.image_pers = pygame.image.load(os.path.join(path, self.pers_menu.pic)).convert()
+        self.image_pers = pygame.transform.scale(self.image_pers, (HEIGHT // 5, HEIGHT // 5))
+        self.image_pers_rect = self.image_pers.get_rect()
+        self.image_pers_rect.centerx = self.screen_rect.centerx
+        self.image_pers_rect.centery = self.screen_rect.centery - WIDTH // 6
+
+        self.pers_name = self.font_btns.render(self.characters[self.pers].name, False, (255, 255, 255))
+        self.pers_name_rect = self.pers_name.get_rect()
+        self.pers_name_rect.centerx = self.image_pers_rect.centerx
+        self.pers_name_bottomy = self.image_pers_rect.y - WIDTH // 20
+
+        self.arrow_left = self.font_btns.render('<', False, (255, 255, 255))
+        self.arrow_left_rect = self.arrow_left.get_rect()
+        self.arrow_left_rect.right = self.pers_name_rect.x - WIDTH // 25
+        self.arrow_left_rect.centery = self.pers_name_rect.centery
+
+        self.arrow_right = self.font_btns.render('>', False, (255, 255, 255))
+        self.arrow_right_rect = self.arrow_right.get_rect()
+        self.arrow_right_rect.x = self.pers_name_rect.right + WIDTH // 25
+        self.arrow_right_rect.centery = self.pers_name_rect.centery
 
 
 class Camera:
@@ -363,7 +484,7 @@ class Camera:
         return ans
 
     def move(self, x, y):
-        '''ans = [0, 0]
+        ans = [0, 0]
         if x >= game.map.size[0] - WIDTH:
             print('horizontal border')
             ans[0] = 1
@@ -375,7 +496,7 @@ class Camera:
         else:
             self.cam_y += y
 
-        return ans'''
+        return ans
         ...
 
 
