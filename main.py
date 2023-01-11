@@ -372,7 +372,7 @@ class Menu:
             if self.pers_menu.rect.centerx > WIDTH // 2:
                 self.pers_menu.rect.centerx -= 10
             if self.thrown_flag:
-                self.pers_menu.rect.y -= 30
+                self.pers_menu.rect.y -= 50
                 if self.pers_tmp.rect.centerx > WIDTH // 2:
                     self.pers_tmp.rect.centerx -= 10
                 else:
