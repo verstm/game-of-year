@@ -384,7 +384,6 @@ class Object:
         pass
 
 
-
 class Pawn:
     def __init__(self):
         self.truecords = (WIDTH // 2, HEIGHT // 2)
@@ -394,9 +393,13 @@ class Pawn:
         self.group.add(self)
         self.combo = []
         self.last_combo_time = time.time()
+        self.mouse_was_pressed = 0
         self.animation_counter = [0, 1]
         self.default_animation = None
         self.current_animation = None
+        self.maxHP = 1000
+        self.main_chr = 1
+        self.HP = self.maxHP
         self.controls_num = 0
         self.animframes_divisor = 1
         self.horizontal_speed = 0
@@ -595,18 +598,15 @@ class Pawn:
 
     def attack_hitbox(self, x1, y1, x2, y2):
         self.atk_hitbox = pygame.sprite.Sprite()
-        self.atk_hitbox.image = pygame.Surface((x2-x1, y2-y1))
+        self.atk_hitbox.image = pygame.Surface((max(x1, x2) - min(x1, x2), max(y1, y2) - min(y1, y2)))
         self.atk_hitbox.rect = self.atk_hitbox.image.get_rect()
-        self.atk_hitbox.rect.x = x1
-        print(x1, self.rect.x)
-        self.atk_hitbox.rect.y = y1
+        self.atk_hitbox.rect.x = x2 if x1 > x2 else x1
+        self.atk_hitbox.rect.y = y2 if y1 > y2 else y1
         if DEBUG:
             self.atk_hitbox.image.fill((255, 0, 0))
             screen.blit(self.atk_hitbox.image, self.atk_hitbox.rect)
         hits = pygame.sprite.spritecollide(self.atk_hitbox, self.enemygroup, False)
-        for hit in hits:
-            hit.HP -= 228
-
+        return hits
 
 
 class Human(Pawn, pygame.sprite.Sprite):
@@ -642,14 +642,14 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.moves = []
         self.pic = 'Human.png'
         self.name = 'Human'
-        self.maxHP = 1000
-        self.main_chr = 1
-        self.HP = self.maxHP
         self.combo_expiration = 1
         self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
                      self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
         self.enemy = ''
-
+        self.combo_info = {'1': [15, 15, 15, 10], '11': [15, 15, 15, 10], '111': [30, 15, 15, 15],
+                           '1111': [15, 15, 0, 20], '-1': [15, 15, 15, 10], '-1-1': [15, 15, 15, 10],
+                           '-1-1-1': [30, 15, 15, 15],
+                           '-1-1-1-1': [15, 15, 0, 20]}
         self.enemygroup = ''
 
     def update(self):
@@ -667,6 +667,7 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.update_cd()
 
     def control(self, keys, mouse):
+        global flg
         speed = 3
         right, left = 1, 3
         keys_1 = pygame.key.get_pressed()
@@ -680,8 +681,8 @@ class Human(Pawn, pygame.sprite.Sprite):
                 self.set_animation(self.idle_right, True)
             else:
                 self.set_animation(self.idle_left, True)
-        if keys_1[pygame.K_h]:
-            self.HP -= 1
+        if keys_1[pygame.K_g]:
+            self.knockback(45, 10)
         if not self.stun_cnt:
             if 0 in keys:
                 ...
@@ -706,7 +707,8 @@ class Human(Pawn, pygame.sprite.Sprite):
 
             if keys_1[pygame.K_b]:
                 self.debug_stun()
-            if mouse[0] and self.cd[self.mouse] == 0:
+            if mouse[0] and self.cd[self.mouse] == 0 and not self.mouse_was_pressed:
+                self.mouse_was_pressed = 1
                 pos = pygame.mouse.get_pos()
                 x = pos[0] - int(WIDTH // 2)
                 y = int(HEIGHT // 2) - pos[1]
@@ -718,7 +720,8 @@ class Human(Pawn, pygame.sprite.Sprite):
                 if sinalpha < 0:
                     alpha += 180
                 self.mouse(alpha)
-
+            elif not mouse[0]:
+                self.mouse_was_pressed = 0
         else:
             print('here')
             self.stun_cnt -= 1
@@ -728,20 +731,99 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.hang_cnt = max(30, self.hang_cnt)
 
     def attack(self):
-        #print(self.combo)
-        #print(self.combo1_1_right, self.combo1_2_right, self.combo1_3_right, self.combo1_4_right)
-        self.attack_hitbox(self.rect.x, self.rect.y, self.rect.x + 100, self.rect.y + 200)
+        rng = 10
         if time.time() - self.last_combo_time >= self.combo_expiration:
             self.combo = [self.combo[-1]]
         if time.time() - self.last_combo_time >= self.combocd[0]:
             if self.combo == [1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x + (self.rect.width) + rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['1'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['1'][0]
+                    i.hang_cnt = self.combo_info['1'][2]
+                    i.HP -= self.combo_info['1'][3]
                 self.set_animation(self.combo1_1_right, False, 0.5)
+                print(ht)
             elif self.combo == [1, 1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x + (self.rect.width) + rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['11'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['11'][0]
+                    i.hang_cnt = self.combo_info['11'][2]
+                    i.HP -= self.combo_info['11'][3]
+
                 self.set_animation(self.combo1_2_right, False, 0.5)
             elif self.combo == [1, 1, 1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x + (self.rect.width) + rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['111'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['111'][0]
+                    i.hang_cnt = self.combo_info['111'][2]
+                    i.HP -= self.combo_info['111'][3]
+
                 self.set_animation(self.combo1_3_right, False, 0.5)
             elif self.combo == [1, 1, 1, 1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x + (self.rect.width) + rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['1111'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['1111'][0]
+                    i.hang_cnt = self.combo_info['1111'][2]
+                    i.HP -= self.combo_info['1111'][3]
+                    i.knockback(45, 150)
                 self.set_animation(self.combo1_4_right, False, 0.5)
+                self.combo = []
+            elif self.combo == [-1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x - rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['-1'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['-1'][0]
+                    i.hang_cnt = self.combo_info['-1'][2]
+                    i.HP -= self.combo_info['-1'][3]
+                self.set_animation(self.combo1_1_left, False, 0.5)
+                print(ht)
+            elif self.combo == [-1, -1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x - rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['-1-1'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['-1-1'][0]
+                    i.hang_cnt = self.combo_info['-1-1'][2]
+                    i.HP -= self.combo_info['-1-1'][3]
+
+                self.set_animation(self.combo1_2_left, False, 0.5)
+            elif self.combo == [-1, -1, -1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x - rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['-1-1-1'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['-1-1-1'][0]
+                    i.hang_cnt = self.combo_info['-1-1-1'][2]
+                    i.HP -= self.combo_info['-1-1-1'][3]
+
+                self.set_animation(self.combo1_3_left, False, 0.5)
+            elif self.combo == [-1, -1, -1, -1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x - rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['-1-1-1-1'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['-1-1-1-1'][0]
+                    i.hang_cnt = self.combo_info['-1-1-1-1'][2]
+                    i.HP -= self.combo_info['-1-1-1-1'][3]
+                    i.knockback(180 - 45, 150)
+                self.set_animation(self.combo1_4_left, False, 0.5)
                 self.combo = []
             else:
                 self.combo = []
