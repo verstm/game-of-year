@@ -1,5 +1,4 @@
-import pygame as pg
-import pygame.event
+import pygame
 import numpy
 from math import sin, cos, acos, hypot
 import os
@@ -11,16 +10,16 @@ from net_functions import *
 from copy import copy, deepcopy
 import time
 
-pg.init()
+pygame.init()
 true_width, true_height = pygame.display.Info().current_w, pygame.display.Info().current_h
 WIDTH = int(true_width * 0.8)
 HEIGHT = int(true_height * 0.8)
 FPS = 60
 running = True
-clock = pg.time.Clock()
-screen = pg.display.set_mode((WIDTH, HEIGHT))
+clock = pygame.time.Clock()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
 ASSETS_PATH = 'Assets/'
-controls = [[pg.K_w, pg.K_d, pg.K_s, pg.K_a, pg.K_SPACE, pg.KMOD_SHIFT]]
+controls = [[pygame.K_w, pygame.K_d, pygame.K_s, pygame.K_a, pygame.K_SPACE, pygame.KMOD_SHIFT, pygame.K_q]]
 G = 1
 DEBUG = True
 
@@ -109,6 +108,8 @@ class Main:
         self.events = []
         if self.mode < 2:
             self.mode, self.pers1 = self.menu.update()
+            if self.mode == 2:
+                self.gui = GUI(self.pers1, self.pers2)
             self.set_enemies()
         if self.mode == 2:
             self.map.update()
@@ -162,8 +163,8 @@ class Main:
             for x in range(len(anims)):
                 for y in range(len(anims[x])):
                     # print(anims[x][y])
-                    anims[x][y] = (pg.image.load(anims[x][y][0]) if anims[x][y][-1] > 0 else pygame.transform.flip(
-                        pg.image.load(anims[x][y][0]), True, False), anims[x][y][0], anims[x][y][-1])
+                    anims[x][y] = (pygame.image.load(anims[x][y][0]) if anims[x][y][-1] > 0 else pygame.transform.flip(
+                        pygame.image.load(anims[x][y][0]), True, False), anims[x][y][0], anims[x][y][-1])
             characters[i].animations = anims.copy()
             characters[i].animation_counter = pack[i][4].copy()
             characters[i].vertical_speed = pack[i][5]
@@ -320,8 +321,8 @@ class Map:
 
 class Menu:
     def __init__(self):
-        self.characters = [Human()]
-        self.pers = 0
+        self.characters = [Human(), Not_Gaster()]
+        self.pers = 1
         print('menu initialized')
         self.screen_rect = screen.get_rect()
 
@@ -380,6 +381,7 @@ class Menu:
                     self.pers_menu.rect.x = self.pers_tmp.rect.x
                     self.pers_menu.rect.centery = self.screen_rect.centery
                     self.pers_tmp.rect.x = WIDTH + 1
+        
         return self.check_buttons(), self.pers_menu
 
 
@@ -387,12 +389,12 @@ class Menu:
         mouse = pygame.mouse.get_pos()
         pressed_mouse = pygame.mouse.get_pressed()
         if not self.mode:
-            if self.t_play_rect.x < mouse[0] < self.t_play_rect.x + self.t_play_rect.width and self.t_play_rect.y < mouse[1] < self.t_play_rect.y + self.t_play_rect.height:
+            if self.t_play_rect.x < mouse[0] < self.t_play_rect.right and self.t_play_rect.y < mouse[1] < self.t_play_rect.bottom:
                 self.t_play = self.font_btns.render('ИГРАТЬ C ДРУЗЬЯМИ', False, (255, 0, 0))
                 if pressed_mouse[0]:
                     self.mode += 1
                 return self.mode
-            elif self.t_exit_rect.x < mouse[0] < self.t_exit_rect.x + self.t_exit_rect.width and self.t_exit_rect.y < mouse[1] < self.t_exit_rect.y + self.t_exit_rect.height:
+            elif self.t_exit_rect.x < mouse[0] < self.t_exit_rect.right and self.t_exit_rect.y < mouse[1] < self.t_exit_rect.bottom:
                 self.t_exit = self.font_btns.render('У МЕНЯ НЕТ ДРУЗЕЙ', False, (255, 0, 0))
                 if pressed_mouse[0]:
                     exit(0)
@@ -428,6 +430,11 @@ class Menu:
     def update_pers(self):
         path = os.path.join(os.path.dirname(__file__), 'Assets')
         path = os.path.join(path, 'Sprites')
+        
+        self.pers_menu = self.characters[self.pers]
+        self.pers_menu.rect.x = WIDTH + 1
+        self.pers_menu.rect.centery = self.screen_rect.centery
+
         self.image_pers = pygame.image.load(os.path.join(path, self.pers_menu.pic)).convert()
         self.image_pers = pygame.transform.scale(self.image_pers, (HEIGHT // 5, HEIGHT // 5))
         self.image_pers_rect = self.image_pers.get_rect()
@@ -500,9 +507,20 @@ class Camera:
         ...
 
 
-class Object:
-    def __init__(self):
-        pass
+class Object(pygame.sprite.Sprite):
+    def __init__(self, x, y, image, parent):
+        path = os.path.join(os.path.dirname(__file__), 'Assets')
+        path = os.path.join(path, 'Sprites')
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.image.load(os.path.join(path, image))
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.parent = parent
+
+    def move(self, x, y):
+        self.rect.x += x
+        self.rect.y += y
 
 
 class Pawn:
@@ -539,6 +557,48 @@ class Pawn:
         self.maxcd = {self.mouse: FPS // 4}
         self.stun_cnt = 0
         self.hang_cnt = 0
+        self.objectgroup = pygame.sprite.Group()
+
+    def init_pers(self):
+        animpath_run = ASSETS_PATH + 'Sprites/Animations/running_1/'
+        animpath_atk = ASSETS_PATH + 'sprites/Animations/attacking/'
+        self.image = pygame.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')
+        self.idle_right = [pygame.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')]
+        self.idle_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.idle_right))
+        self.default_animation = lambda: self.idle_right if self.last_direction else self.idle_left
+        self.current_animation = self.default_animation()
+        self.rect = self.image.get_rect()
+        self.runanimation_right = [pygame.image.load(animpath_run + f'{i}.png') for i in range(1, 7)]
+        self.runanimation_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.runanimation_right))
+        self.stoppinganimation_right = [pygame.image.load(ASSETS_PATH + 'Sprites/stopping.png')]
+        self.stoppinganimation_left = list(
+            map(lambda i: pygame.transform.flip(i, True, False), self.stoppinganimation_right))
+        self.combo1_1_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_1/{i}.png') for i in
+                               range(1, len(list(os.walk(ASSETS_PATH + f'Sprites/Animations/combo_1_1/'))[0][2]) + 1)]
+        self.combo1_2_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_2/{i}.png') for i in
+                               range(1, len(list(os.walk(ASSETS_PATH + f'Sprites/Animations/combo_1_2/'))[0][2]) + 1)]
+        self.combo1_3_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_3/{i}.png') for i in
+                               range(1, len(list(os.walk(ASSETS_PATH + f'Sprites/Animations/combo_1_3/'))[0][2]) + 1)]
+        self.combo1_4_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_4/{i}.png') for i in
+                               range(1, len(list(os.walk(ASSETS_PATH + f'Sprites/Animations/combo_1_4/'))[0][2]) + 1)]
+        self.combo1_1_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_1_right))
+        self.combo1_2_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_2_right))
+        self.combo1_3_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_3_right))
+        self.combo1_4_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_4_right))
+        self.combocd = [0.2]
+        self.animation_counter = [0, 0]
+        self.moves = []
+        self.pic = 'Human.png'
+        self.name = 'Human'
+        self.combo_expiration = 1
+        self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
+                     self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
+        self.enemy = ''
+        self.combo_info = {'1': [15, 15, 15, 10], '11': [15, 15, 15, 10], '111': [30, 15, 15, 15],
+                           '1111': [15, 15, 0, 20], '-1': [15, 15, 15, 10], '-1-1': [15, 15, 15, 10],
+                           '-1-1-1': [30, 15, 15, 15],
+                           '-1-1-1-1': [15, 15, 0, 20]}
+        self.enemygroup = ''
 
     def move(self, x, y):
         # print(x, y)
@@ -733,45 +793,7 @@ class Pawn:
 class Human(Pawn, pygame.sprite.Sprite):
     def __init__(self):
         super(Human, self).__init__()
-        animpath_run = ASSETS_PATH + 'Sprites/Animations/running_1/'
-        animpath_atk = ASSETS_PATH + 'sprites/Animations/attacking/'
-        self.image = pg.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')
-        self.idle_right = [pg.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')]
-        self.idle_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.idle_right))
-        self.default_animation = lambda: self.idle_right if self.last_direction else self.idle_left
-        self.current_animation = self.default_animation()
-        self.rect = self.image.get_rect()
-        self.runanimation_right = [pygame.image.load(animpath_run + f'{i}.png') for i in range(1, 7)]
-        self.runanimation_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.runanimation_right))
-        self.stoppinganimation_right = [pygame.image.load(ASSETS_PATH + 'Sprites/stopping.png')]
-        self.stoppinganimation_left = list(
-            map(lambda i: pygame.transform.flip(i, True, False), self.stoppinganimation_right))
-        self.combo1_1_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_1/{i}.png') for i in
-                               range(1, len(list(os.walk(ASSETS_PATH + f'Sprites/Animations/combo_1_1/'))[0][2]) + 1)]
-        self.combo1_2_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_2/{i}.png') for i in
-                               range(1, len(list(os.walk(ASSETS_PATH + f'Sprites/Animations/combo_1_2/'))[0][2]) + 1)]
-        self.combo1_3_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_3/{i}.png') for i in
-                               range(1, len(list(os.walk(ASSETS_PATH + f'Sprites/Animations/combo_1_3/'))[0][2]) + 1)]
-        self.combo1_4_right = [pygame.image.load(ASSETS_PATH + f'Sprites/Animations/combo_1_4/{i}.png') for i in
-                               range(1, len(list(os.walk(ASSETS_PATH + f'Sprites/Animations/combo_1_4/'))[0][2]) + 1)]
-        self.combo1_1_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_1_right))
-        self.combo1_2_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_2_right))
-        self.combo1_3_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_3_right))
-        self.combo1_4_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_4_right))
-        self.combocd = [0.2]
-        self.animation_counter = [0, 0]
-        self.moves = []
-        self.pic = 'Human.png'
-        self.name = 'Human'
-        self.combo_expiration = 1
-        self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
-                     self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
-        self.enemy = ''
-        self.combo_info = {'1': [15, 15, 15, 10], '11': [15, 15, 15, 10], '111': [30, 15, 15, 15],
-                           '1111': [15, 15, 0, 20], '-1': [15, 15, 15, 10], '-1-1': [15, 15, 15, 10],
-                           '-1-1-1': [30, 15, 15, 15],
-                           '-1-1-1-1': [15, 15, 0, 20]}
-        self.enemygroup = ''
+        self.init_pers()
 
     def update(self):
         if self.main_chr:
@@ -802,8 +824,6 @@ class Human(Pawn, pygame.sprite.Sprite):
                 self.set_animation(self.idle_right, True)
             else:
                 self.set_animation(self.idle_left, True)
-        if keys_1[pygame.K_g]:
-            self.knockback(45, 10)
         if not self.stun_cnt:
             if 0 in keys:
                 ...
@@ -826,8 +846,9 @@ class Human(Pawn, pygame.sprite.Sprite):
             else:
                 self.jumpflg = 0
 
-            if keys_1[pygame.K_b]:
-                self.debug_stun()
+            if 6 in keys:
+                self.gblaster()
+
             if mouse[0] and self.cd[self.mouse] == 0 and not self.mouse_was_pressed:
                 self.mouse_was_pressed = 1
                 pos = pygame.mouse.get_pos()
@@ -952,17 +973,253 @@ class Human(Pawn, pygame.sprite.Sprite):
         else:
             self.combo.pop(-1)
 
+class Not_Gaster(Pawn, pygame.sprite.Sprite):
+    def __init__(self):
+        super(Not_Gaster, self).__init__()
+        self.init_pers()
+        self.name = 'Gaster'
+        self.pic = 'gaster.png'
+        self.cd[self.gblaster] = 0
+        self.maxcd[self.gblaster] = 90 + FPS * 3
+        self.blaster = Blaster(0, 0, self, 'right')
+        self.flag_restrict_movement = False
+    
+    def control(self, keys, mouse):
+        global flg
+        speed = 3
+        right, left = 1, 3
+        keys_1 = pygame.key.get_pressed()
+        if self.current_animation == self.runanimation_right and not right in keys:
+            self.set_animation(self.stoppinganimation_right, True)
+        if self.current_animation == self.runanimation_left and not left in keys:
+            self.set_animation(self.stoppinganimation_left, True)
+        if self.horizontal_speed == 0 and (
+                self.current_animation == self.stoppinganimation_right or self.current_animation == self.stoppinganimation_left):
+            if self.last_direction == 1:
+                self.set_animation(self.idle_right, True)
+            else:
+                self.set_animation(self.idle_left, True)
+        if not self.stun_cnt:
+            if 0 in keys:
+                ...
+                # self.move(0, -speed)
+            if 2 in keys:
+                ...
+                # self.move(0, speed)
+            if not self.flag_restrict_movement:
+                if right in keys and self.bottom:
+                    self.horizontal_speed += speed
+                    self.set_animation(self.runanimation_right)
+                    # self.move(speed, 0)
+                if left in keys and self.bottom:
+                    self.horizontal_speed -= speed
+                    self.set_animation(self.runanimation_left)
+                    # self.move(-speed, 0)
 
+                if 4 in keys and (self.jumpflg or self.bottom) and self.vertical_speed > -15:
+                    self.jumpflg = 1
+                    self.vertical_speed += -self.jump_power
+                else:
+                    self.jumpflg = 0
+
+
+            if keys_1[pygame.K_b]:
+                self.debug_stun()
+            if keys_1[pygame.K_q] and self.cd[self.gblaster] == 0:
+                self.horizontal_speed = 0
+                self.vertical_speed = 0
+                self.gblaster()
+            if mouse[0] and self.cd[self.mouse] == 0 and not self.mouse_was_pressed:
+                self.mouse_was_pressed = 1
+                pos = pygame.mouse.get_pos()
+                x = pos[0] - int(WIDTH // 2)
+                y = int(HEIGHT // 2) - pos[1]
+                sinalpha = y / hypot(x, y)
+                cosalpha = x / hypot(x, y)
+                if sinalpha < 0:
+                    cosalpha = -cosalpha
+                alpha = acos(cosalpha) * 57.3
+                if sinalpha < 0:
+                    alpha += 180
+                self.mouse(alpha)
+            elif not mouse[0]:
+                self.mouse_was_pressed = 0
+        else:
+            print('here')
+            self.stun_cnt -= 1
+
+    def update(self):
+        if self.main_chr:
+            self.events_check()
+        self.cam_targeting(self.main_chr)
+
+        self.physics()
+        # self.rect.x, self.rect.y = self.x, self.y
+        self.animation_update()
+        self.group.draw(screen)
+        self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
+                     self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
+
+        self.update_cd()
+
+        self.objectgroup.update()
+        self.objectgroup.draw(screen)
+        # self.objectgroup.draw(screen)
+    def attack(self):
+        rng = 10
+        if time.time() - self.last_combo_time >= self.combo_expiration:
+            self.combo = [self.combo[-1]]
+        if time.time() - self.last_combo_time >= self.combocd[0]:
+            if self.combo == [1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x + (self.rect.width) + rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['1'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['1'][0]
+                    i.hang_cnt = self.combo_info['1'][2]
+                    i.HP -= self.combo_info['1'][3]
+                self.set_animation(self.combo1_1_right, False, 0.5)
+                print(ht)
+            elif self.combo == [1, 1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x + (self.rect.width) + rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['11'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['11'][0]
+                    i.hang_cnt = self.combo_info['11'][2]
+                    i.HP -= self.combo_info['11'][3]
+
+                self.set_animation(self.combo1_2_right, False, 0.5)
+            elif self.combo == [1, 1, 1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x + (self.rect.width) + rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['111'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['111'][0]
+                    i.hang_cnt = self.combo_info['111'][2]
+                    i.HP -= self.combo_info['111'][3]
+
+                self.set_animation(self.combo1_3_right, False, 0.5)
+            elif self.combo == [1, 1, 1, 1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x + (self.rect.width) + rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['1111'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['1111'][0]
+                    i.hang_cnt = self.combo_info['1111'][2]
+                    i.HP -= self.combo_info['1111'][3]
+                    i.knockback(45, 150)
+                self.set_animation(self.combo1_4_right, False, 0.5)
+                self.combo = []
+            elif self.combo == [-1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x - rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['-1'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['-1'][0]
+                    i.hang_cnt = self.combo_info['-1'][2]
+                    i.HP -= self.combo_info['-1'][3]
+                self.set_animation(self.combo1_1_left, False, 0.5)
+                print(ht)
+            elif self.combo == [-1, -1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x - rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['-1-1'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['-1-1'][0]
+                    i.hang_cnt = self.combo_info['-1-1'][2]
+                    i.HP -= self.combo_info['-1-1'][3]
+
+                self.set_animation(self.combo1_2_left, False, 0.5)
+            elif self.combo == [-1, -1, -1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x - rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['-1-1-1'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['-1-1-1'][0]
+                    i.hang_cnt = self.combo_info['-1-1-1'][2]
+                    i.HP -= self.combo_info['-1-1-1'][3]
+
+                self.set_animation(self.combo1_3_left, False, 0.5)
+            elif self.combo == [-1, -1, -1, -1]:
+                ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
+                                        self.rect.x - rng,
+                                        self.rect.y + self.rect.width)
+                self.hang_cnt = self.combo_info['-1-1-1-1'][1]
+                for i in ht:
+                    i.stun_cnt = self.combo_info['-1-1-1-1'][0]
+                    i.hang_cnt = self.combo_info['-1-1-1-1'][2]
+                    i.HP -= self.combo_info['-1-1-1-1'][3]
+                    i.knockback(180 - 45, 150)
+                self.set_animation(self.combo1_4_left, False, 0.5)
+                self.combo = []
+            else:
+                self.combo = []
+            self.last_combo_time = time.time()
+        else:
+            self.combo.pop(-1)
+
+    def gblaster(self):
+        self.flag_restrict_movement = True
+        if self.last_direction:
+            self.blaster = Blaster(self.rect.x + self.rect.width // 3, self.rect.y + self.rect.height // 3, self, 'right')
+        else:
+            self.blaster = Blaster(self.rect.x - self.rect.width // 3 - 41, self.rect.y + self.rect.height // 3, self, 'left')
+        self.objectgroup.add(self.blaster)
+        self.cd[self.gblaster] = 1
+class Blaster(Object, pygame.sprite.Sprite):
+    def __init__(self, x, y, parent, direction):
+        pygame.sprite.Sprite.__init__(self)
+        Object.__init__(self, x, y, f'blaster_{direction}.png', parent)
+        self.flag_attacking = False
+        self.direction = 1 if direction == 'right' else 0
+        self.cnt = 0
+        self.idle_max = 30
+        self.shoot_max = 90
+        self.active = False
+
+        self.ray = pygame.sprite.Sprite()
+        self.ray.image = pygame.Surface((500, 30))
+        self.ray.image.fill((255, 0, 0))
+        self.ray.rect = self.ray.image.get_rect()
+        if self.direction == 1:
+            self.rect.x += self.parent.rect.width
+            self.ray.rect.x = self.rect.x  + 5
+        else:
+            self.ray.rect.right = self.rect.x - 5
+        self.ray.rect.centery = self.rect.centery
+
+    def update(self):
+        if self.cnt < self.shoot_max:
+            self.cnt += 1
+            if self.cnt >= self.idle_max:
+                screen.blit(self.ray.image, self.ray.rect)
+                for hit in pygame.sprite.spritecollide(self.ray, self.parent.enemygroup, False):
+                    try:
+                        hit.HP -= 10
+                    except Exception as e:
+                        pass
+        else:
+            self.cnt = 0
+            self.parent.flag_restrict_movement = False
+            self.parent.objectgroup.remove(self)
 game = Main()
 
 while running:
     screen.fill((0, 0, 0))
-    for event in pg.event.get():
-        if event.type == pg.WINDOWCLOSE:
+    for event in pygame.event.get():
+        if event.type == pygame.WINDOWCLOSE:
             exit(0)
             running = False
 
     game.update()
     clock.tick(FPS)
-    pg.display.update()
-    pg.display.flip()
+    pygame.display.update()
+    pygame.display.flip()
