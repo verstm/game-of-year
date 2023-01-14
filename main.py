@@ -1,6 +1,6 @@
 import pygame
 import numpy
-from math import sin, cos, acos, hypot
+from math import sin, cos, asin, acos, hypot
 import os
 import pickle
 from twisted.internet import protocol, reactor
@@ -9,6 +9,7 @@ from socket import socket, AF_INET, SOCK_DGRAM
 from net_functions import *
 from copy import copy, deepcopy
 import time
+import random
 
 pygame.init()
 true_width, true_height = pygame.display.Info().current_w, pygame.display.Info().current_h
@@ -19,7 +20,7 @@ running = True
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 ASSETS_PATH = 'Assets/'
-controls = [[pygame.K_w, pygame.K_d, pygame.K_s, pygame.K_a, pygame.K_SPACE, pygame.KMOD_SHIFT, pygame.K_q]]
+controls = [[pygame.K_w, pygame.K_d, pygame.K_s, pygame.K_a, pygame.K_SPACE, pygame.KMOD_SHIFT, pygame.K_q, pygame.K_w]]
 G = 1
 DEBUG = True
 
@@ -508,11 +509,14 @@ class Camera:
 
 
 class Object(pygame.sprite.Sprite):
-    def __init__(self, x, y, image, parent):
+    def __init__(self, x, y, image, parent, width=None, height=None):
         path = os.path.join(os.path.dirname(__file__), 'Assets')
         path = os.path.join(path, 'Sprites')
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.image.load(os.path.join(path, image))
+        if width:
+            print('here')
+            self.image = pygame.transform.scale(self.image, (width, height))
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -846,9 +850,6 @@ class Human(Pawn, pygame.sprite.Sprite):
             else:
                 self.jumpflg = 0
 
-            if 6 in keys:
-                self.gblaster()
-
             if mouse[0] and self.cd[self.mouse] == 0 and not self.mouse_was_pressed:
                 self.mouse_was_pressed = 1
                 pos = pygame.mouse.get_pos()
@@ -981,8 +982,9 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         self.pic = 'gaster.png'
         self.cd[self.gblaster] = 0
         self.maxcd[self.gblaster] = 90 + FPS * 3
-        self.blaster = Blaster(0, 0, self, 'right')
         self.flag_restrict_movement = False
+        self.cd[self.pellets] = 0
+        self.maxcd[self.pellets] = 300
     
     def control(self, keys, mouse):
         global flg
@@ -1022,13 +1024,13 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
                 else:
                     self.jumpflg = 0
 
+                if 6 in keys and not self.cd[self.gblaster]:
+                    self.horizontal_speed = 0
+                    self.vertical_speed = 0
+                    self.gblaster()
+                if 7 in keys and not self.cd[self.pellets]:
+                    self.pellets()
 
-            if keys_1[pygame.K_b]:
-                self.debug_stun()
-            if keys_1[pygame.K_q] and self.cd[self.gblaster] == 0:
-                self.horizontal_speed = 0
-                self.vertical_speed = 0
-                self.gblaster()
             if mouse[0] and self.cd[self.mouse] == 0 and not self.mouse_was_pressed:
                 self.mouse_was_pressed = 1
                 pos = pygame.mouse.get_pos()
@@ -1174,6 +1176,14 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
             self.blaster = Blaster(self.rect.x - self.rect.width // 3 - 41, self.rect.y + self.rect.height // 3, self, 'left')
         self.objectgroup.add(self.blaster)
         self.cd[self.gblaster] = 1
+    
+    def pellets(self):
+        for i in range(15):
+            x = random.randint(self.rect.x - self.rect.width * 2, self.rect.x + self.rect.width * 2)
+            y = random.randint(HEIGHT // 3, HEIGHT // 3 * 2)
+            self.objectgroup.add(Pellet(x, y, self))
+        self.cd[self.pellets] = 1
+
 class Blaster(Object, pygame.sprite.Sprite):
     def __init__(self, x, y, parent, direction):
         pygame.sprite.Sprite.__init__(self)
@@ -1210,6 +1220,31 @@ class Blaster(Object, pygame.sprite.Sprite):
             self.cnt = 0
             self.parent.flag_restrict_movement = False
             self.parent.objectgroup.remove(self)
+
+class Pellet(Object, pygame.sprite.Sprite):
+    def __init__(self, x, y, parent):
+        super().__init__(x, y, 'yellow.png', parent, 15, 15)
+        rx = self.parent.enemy.rect.centerx - self.rect.centerx
+        ry = self.rect.centery - (self.parent.rect.y + self.parent.enemy.rect.centery) / 2
+        self.cos = cos(rx / hypot(rx, ry))
+        if rx < 0: self.cos = -self.cos
+        self.sin = sin(ry / hypot(ry, rx))
+        if ry < 0: self.sin = -self.sin
+        self.speed = 30
+
+    def update(self):
+        self.move(self.speed * self.cos, self.speed * self.sin)
+        for hit in pygame.sprite.spritecollide(self, self.parent.enemygroup, False):
+            try:
+                hit.HP -= 10
+                self.parent.objectgroup.remove(self)
+            except Exception as e:
+                pass
+        if not(0 < self.rect.x < WIDTH and 0 < self.rect.y < HEIGHT):
+            self.parent.objectgroup.remove(self)
+
+
+
 game = Main()
 
 while running:
