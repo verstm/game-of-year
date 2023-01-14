@@ -353,6 +353,7 @@ class Menu:
         self.t_start_rect.center = screen_rect.center
         self.t_start_rect.y += screen_rect.height // 5
 
+        self.btn_flg = 0
         self.update_pers()
 
         self.thrown_flag = False
@@ -387,16 +388,23 @@ class Menu:
 
     def check_buttons(self):
         mouse = pygame.mouse.get_pos()
-        pressed_mouse = pygame.mouse.get_pressed()
+        pressed_mouse = pygame.mouse.get_pressed()[0]
+        if pressed_mouse:
+            if self.btn_flg:
+                pressed_mouse = 0
+            else:
+                self.btn_flg = 1
+        else:
+            self.btn_flg = 0
         if not self.mode:
             if self.t_play_rect.x < mouse[0] < self.t_play_rect.right and self.t_play_rect.y < mouse[1] < self.t_play_rect.bottom:
                 self.t_play = self.font_btns.render('ИГРАТЬ C ДРУЗЬЯМИ', False, (255, 0, 0))
-                if pressed_mouse[0]:
+                if pressed_mouse:
                     self.mode += 1
                 return self.mode
             elif self.t_exit_rect.x < mouse[0] < self.t_exit_rect.right and self.t_exit_rect.y < mouse[1] < self.t_exit_rect.bottom:
                 self.t_exit = self.font_btns.render('У МЕНЯ НЕТ ДРУЗЕЙ', False, (255, 0, 0))
-                if pressed_mouse[0]:
+                if pressed_mouse:
                     exit(0)
             else:
                 self.t_play = self.font_btns.render('ИГРАТЬ С ДРУЗЬЯМИ', False, (255, 255, 255))
@@ -404,16 +412,16 @@ class Menu:
         elif self.mode == 1:
             if self.arrow_left_rect.x < mouse[0] < self.arrow_left_rect.right and self.arrow_left_rect.y < mouse[1] < self.arrow_left_rect.bottom:
                 self.arrow_left = self.font_btns.render('<', False, (255, 0, 0))
-                if pressed_mouse[0]:
+                if pressed_mouse:
                     self.change_pers(-1)
                     
             elif self.arrow_right_rect.x < mouse[0] < self.arrow_right_rect.right and self.arrow_right_rect.y < mouse[1] < self.arrow_right_rect.bottom:
                 self.arrow_right = self.font_btns.render('>', False, (255, 0, 0))
-                if pressed_mouse[0]:
+                if pressed_mouse:
                     self.change_pers(1)
             elif self.pers_name_rect.x < mouse[0] < self.pers_name_rect.right and self.pers_name_rect.y < mouse[1] < self.pers_name_rect.bottom:
                 self.pers_name = self.font_btns.render(self.characters[self.pers].name, False, (255, 0, 0))
-                if pressed_mouse[0]:
+                if pressed_mouse:
                     self.mode += 1
             else:
                 self.arrow_left = self.font_btns.render('<', False, (255, 255, 255))
