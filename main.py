@@ -20,7 +20,7 @@ running = True
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 ASSETS_PATH = 'Assets/'
-controls = [[pygame.K_w, pygame.K_d, pygame.K_s, pygame.K_a, pygame.K_SPACE, pygame.KMOD_SHIFT, pygame.K_q, pygame.K_w]]
+controls = [[pygame.K_w, pygame.K_d, pygame.K_s, pygame.K_a, pygame.K_SPACE, pygame.KMOD_SHIFT, pygame.K_q, pygame.K_w, pygame.K_e]]
 G = 1
 DEBUG = True
 
@@ -523,7 +523,6 @@ class Object(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.image.load(os.path.join(path, image))
         if width:
-            print('here')
             self.image = pygame.transform.scale(self.image, (width, height))
         self.rect = self.image.get_rect()
         self.rect.x = x
@@ -993,6 +992,8 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         self.flag_restrict_movement = False
         self.cd[self.pellets] = 0
         self.maxcd[self.pellets] = 300
+        self.cd[self.explosive_pellets] = 0
+        self.maxcd[self.explosive_pellets] = 52 + 180
     
     def control(self, keys, mouse):
         global flg
@@ -1038,7 +1039,8 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
                     self.gblaster()
                 if 7 in keys and not self.cd[self.pellets]:
                     self.pellets()
-
+                if 8 in keys and not self.cd[self.explosive_pellets]:
+                    self.explosive_pellets()
             if mouse[0] and self.cd[self.mouse] == 0 and not self.mouse_was_pressed:
                 self.mouse_was_pressed = 1
                 pos = pygame.mouse.get_pos()
@@ -1071,7 +1073,6 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
                      self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
 
         self.update_cd()
-
         self.objectgroup.update()
         self.objectgroup.draw(screen)
         # self.objectgroup.draw(screen)
@@ -1192,6 +1193,18 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
             self.objectgroup.add(Pellet(x, y, self))
         self.cd[self.pellets] = 1
 
+    def explosive_pellets(self):
+        for i in range(4):
+            x = random.randint(self.rect.x - self.rect.width // 2, self.rect.x)
+            y = random.randint(self.rect.y + self.rect.height // 3, self.rect.y + self.rect.height // 1.5)
+            self.objectgroup.add(Explosive_Pellet(x, y, self))
+        for i in range(4):
+            x = random.randint(self.rect.right, self.rect.right + self.rect.width // 2)
+            y = random.randint(self.rect.y + self.rect.height // 3, self.rect.y + self.rect.height // 1.5)
+            self.objectgroup.add(Explosive_Pellet(x, y, self))
+        self.flag_restrict_movement = True
+        self.cd[self.explosive_pellets] = 1
+
 class Blaster(Object, pygame.sprite.Sprite):
     def __init__(self, x, y, parent, direction):
         pygame.sprite.Sprite.__init__(self)
@@ -1251,6 +1264,41 @@ class Pellet(Object, pygame.sprite.Sprite):
         if not(0 < self.rect.x < WIDTH and 0 < self.rect.y < HEIGHT):
             self.parent.objectgroup.remove(self)
 
+class Explosive_Pellet(Object, pygame.sprite.Sprite):
+    def __init__(self, x, y, parent):
+        super().__init__(x, y, 'orange.png', parent, 15, 15)
+        self.cnt = 0
+        self.cnt_idle = 20
+        self.cnt_max = 35
+        path = os.path.join(os.path.dirname(__file__), 'Assets')
+        path = os.path.join(path, 'Sprites')
+        path = os.path.join(path, 'Animations')
+        self.path = os.path.join(path, 'explosion')
+    def update(self):
+        if self.cnt < self.cnt_max:
+            self.cnt += 1
+            if self.cnt > self.cnt_idle:
+                cnt2 = (self.cnt - self.cnt_idle) // 2
+                print(cnt2)
+                x, y = self.rect.center
+                self.image = pygame.image.load(os.path.join(self.path, f'_{cnt2}.png'))
+                self.rect = self.image.get_rect()
+                self.rect.centerx = x
+                self.rect.centery = y
+                for hit in pygame.sprite.spritecollide(self, self.parent.enemygroup, False):
+                    try:
+                        hit.HP -= 10
+                        hit.knockback(90, 4)
+                    except Exception as e:
+                        pass
+        else:
+            print('here')
+            self.cnt = 0
+            self.parent.objectgroup.remove(self)
+            self.parent.flag_restrict_movement = False
+                
+                
+            
 
 
 game = Main()
