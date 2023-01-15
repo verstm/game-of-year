@@ -7,7 +7,7 @@ import random
 
 ASSETS_PATH = 'Assets/'
 G = 1
-controls = [[pygame.K_w, pygame.K_d, pygame.K_s, pygame.K_a, pygame.K_SPACE, pygame.KMOD_SHIFT, pygame.K_q, pygame.K_w, pygame.K_e]]
+controls = [[pygame.K_w, pygame.K_d, pygame.K_s, pygame.K_a, pygame.K_SPACE, pygame.KMOD_SHIFT, pygame.K_q, pygame.K_w, pygame.K_e, pygame.K_r]]
 DEBUG = True
 
 class Object(pygame.sprite.Sprite):
@@ -493,6 +493,8 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         self.maxcd[self.pellets] = 300
         self.cd[self.explosive_pellets] = 0
         self.maxcd[self.explosive_pellets] = 52 + 180
+        self.cd[self.rope] = 0
+        self.maxcd[self.rope] = 240
         self.WIDTH = WIDTH
         self.HEIGHT = HEIGHT
         self.game = game
@@ -545,6 +547,10 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
                     self.pellets()
                 if 8 in keys and not self.cd[self.explosive_pellets]:
                     self.explosive_pellets()
+                
+                if 9 in keys and not self.cd[self.rope]:
+                    self.rope()
+
             if mouse[0] and self.cd[self.mouse] == 0 and not self.mouse_was_pressed:
                 self.mouse_was_pressed = 1
                 pos = pygame.mouse.get_pos()
@@ -579,6 +585,7 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         self.update_cd()
         self.objectgroup.update()
         self.objectgroup.draw(self.screen)
+    
     def attack(self):
         rng = 10
         if time.time() - self.last_combo_time >= self.combo_expiration:
@@ -708,6 +715,14 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         self.flag_restrict_movement = True
         self.cd[self.explosive_pellets] = 1
 
+    def rope(self):
+        if self.last_direction:
+            self.objectgroup.add(Rope(self.rect.right, self.rect.y + self.rect.height // 3, self, self.last_direction))
+        else:
+            self.objectgroup.add(Rope(self.rect.x, self.rect.y + self.rect.height // 3, self, self.last_direction))
+        self.cd[self.rope] = 1
+
+
 class Blaster(Object, pygame.sprite.Sprite):
     def __init__(self, x, y, parent, direction, screen):
         pygame.sprite.Sprite.__init__(self)
@@ -720,7 +735,7 @@ class Blaster(Object, pygame.sprite.Sprite):
         self.screen = screen
 
         self.ray = pygame.sprite.Sprite()
-        self.ray.image = pygame.Surface((500, 30))
+        self.ray.image = pygame.Surface((2000, 30))
         self.ray.image.fill((255, 0, 0))
         self.ray.rect = self.ray.image.get_rect()
         if self.direction == 1:
@@ -801,4 +816,74 @@ class Explosive_Pellet(Object, pygame.sprite.Sprite):
             self.cnt = 0
             self.parent.objectgroup.remove(self)
             self.parent.flag_restrict_movement = False
-    
+
+class Rope(Object, pygame.sprite.Sprite):
+    def __init__(self, x, y, parent, direction):
+        super().__init__(x, y, 'rope.png', parent)
+        path = os.path.join(os.path.dirname(__file__), 'Assets')
+        self.path = os.path.join(path, 'Sprites')
+        self.needed_width = 10
+        self.len = 20
+        self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')), (self.len, self.needed_width))
+        self.rect = self.image.get_rect()
+        self.rect.y = y
+        self.parent = parent
+        self.direction = direction
+        if self.direction:
+            self.rect.x = x
+        else:
+            self.rect.right = x
+        self.speed = 40
+        self.hit = False
+        self.max_len = 2 * self.parent.rect.width
+    def update(self):
+        if self.len < self.max_len:
+            if self.direction:
+                if not self.hit:
+                    x = self.rect.x
+                    y = self.rect.y
+                    self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')), (self.len, self.needed_width))
+                    self.rect = self.image.get_rect()
+                    self.len += self.speed
+                    self.rect.x = x
+                    self.rect.y = y
+                    for hit in pygame.sprite.spritecollide(self, self.parent.enemygroup, False):
+                        try:
+                            hit.HP -= 10
+                            self.hit = True
+                        except Exception as e:
+                            pass
+                else:
+                    self.max_len = self.parent.rect.width * 5
+                    self.parent.enemy.image = pygame.image.load(os.path.join(self.path, 'bdsm_right.png'))
+                    self.parent.enemy.move(self.speed, 0)
+                    self.len += self.speed
+                    self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')), (self.len, self.needed_width))
+            else:
+                if not self.hit:
+                    x = self.rect.right
+                    y = self.rect.y
+                    self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')), (self.len, self.rect.height))
+                    self.rect = self.image.get_rect()
+                    self.len += self.speed
+                    self.rect.right = x
+                    self.rect.y = y
+                    for hit in pygame.sprite.spritecollide(self, self.parent.enemygroup, False):
+                        try:
+                            hit.HP -= 10
+                            self.hit = True
+                        except Exception as e:
+                            pass
+                else:
+                    x = self.rect.right
+                    y = self.rect.y
+                    self.max_len = self.parent.rect.width * 5
+                    self.parent.enemy.image = pygame.image.load(os.path.join(self.path, 'bdsm_left.png'))
+                    self.parent.enemy.move(-self.speed, 0)
+                    self.len += self.speed
+                    self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')), (self.len, self.needed_width))
+                    self.rect = self.image.get_rect()
+                    self.rect.right = x
+                    self.rect.y = y
+        else:
+            self.parent.objectgroup.remove(self)
