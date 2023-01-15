@@ -3,112 +3,11 @@ import os
 import numpy
 import threading
 from net_functions import *
-from server import *
 from copy import copy, deepcopy
 from characters import *
 
 
-class Main:
-    def __init__(self, WIDTH, HEIGHT, screen, FPS):
-        self.map = Map(self, WIDTH, HEIGHT, screen)
-        self.menu = Menu(WIDTH, HEIGHT, self, screen, FPS)
-        self.camera = Camera(WIDTH, HEIGHT, self)
-        self.pers1 = Human(WIDTH, HEIGHT, self, screen, FPS)
-        self.pers2 = Human(WIDTH, HEIGHT, self, screen, FPS)
-        self.pers2.main_chr = 0
-        self.pers2.rect.x, self.pers2.rect.y = self.pers1.truecords
-        self.gui = GUI(self.pers1, self.pers2, WIDTH, HEIGHT, screen)
-        self.mode = 0
-        self.events = []
-        self.connected = 0
-        self.pack = None
-        self.host = True
-        self.multiplayer_flg = 0
-        self.WIDTH = WIDTH
-        self.HEIGHT = HEIGHT
-        self.screen = screen
-        self.FPS = FPS
 
-    def update(self):
-        self.events = []
-        if self.mode < 2:
-            self.mode, self.pers1 = self.menu.update()
-            if self.mode == 2:
-                self.gui = GUI(self.pers1, self.pers2, self.WIDTH, self.HEIGHT, self.screen)
-            self.set_enemies()
-        if self.mode == 2:
-            self.map.update()
-            self.camera.update()
-            self.pers1.update()
-            self.pers2.update()
-            self.gui.update(self.pers1, self.pers2)
-        if self.mode == 3:
-            if self.connected and self.pack:
-                self.check_pack()
-            else:
-                ...
-            if self.host:
-                if not self.multiplayer_flg:
-                    self.server_thread = threading.Thread(target=server)
-                    self.server_thread.start()
-                    self.multiplayer_flg = 1
-            else:
-                if not self.multiplayer_flg:
-                    opn = scan_lan(8080)
-                    self.client_thread = threading.Thread(target=client, args=[opn[0]])
-                    self.client_thread.start()
-                    self.multiplayer_flg = 1
-            self.map.update()
-            self.camera.update()
-            self.pers1.update()
-            self.pers2.update()
-            self.gui.update(self.pers1, self.pers2)
-            if self.pers1.HP <= 0:
-                self.mode = 4
-            if self.pers2.HP <= 0:
-                self.mode = 4
-            # self.pers1.HP -= 1
-            # self.pers2.HP -= 1
-        if self.mode == 4:
-            print('GAME OVER!!!')
-        self.info = [self.pers1.info]
-
-    def check_pack(self):
-        # pack = [self.pers1.info, self.pers2.info]
-        # persinfo = [self.HP, self.maxHP, self.name, self.pic, animsforinfo, self.animation_counter]
-        pack = deepcopy(self.pack)
-        print(pack)
-        characters = [self.pers2]
-        for i in range(1):
-            characters[i].HP = pack[i][0]
-            characters[i].maxHP = pack[i][1]
-            characters[i].name = pack[i][2]
-            characters[i].pic = pack[i][3]
-            anims = deepcopy(pack[i][4])
-            for x in range(len(anims)):
-                for y in range(len(anims[x])):
-                    # print(anims[x][y])
-                    anims[x][y] = (pygame.image.load(anims[x][y][0]) if anims[x][y][-1] > 0 else pygame.transform.flip(
-                        pygame.image.load(anims[x][y][0]), True, False), anims[x][y][0], anims[x][y][-1])
-            characters[i].animations = anims.copy()
-            characters[i].animation_counter = pack[i][4].copy()
-            characters[i].vertical_speed = pack[i][5]
-            characters[i].horizontal_speed = pack[i][6]
-            characters[i].x = pack[i][7]
-            characters[i].y = pack[i][8]
-            # characters[i].rect.x = pack[i][7]
-            # characters[i].rect.y = pack[i][8]
-    # def information_gathering(self):
-
-    def set_enemies(self):
-        self.pers1.enemy = self.pers2
-        self.pers2.enemy = self.pers1
-        self.pers1_group = pygame.sprite.Group()
-        self.pers1_group.add(self.pers1)
-        self.pers2_group = pygame.sprite.Group()
-        self.pers2_group.add(self.pers2)
-        self.pers1.enemygroup = self.pers2_group
-        self.pers2.enemygroup = self.pers1_group
 
 
 class GUI:
@@ -361,7 +260,7 @@ class Menu:
             elif self.pers_name_rect.x < mouse[0] < self.pers_name_rect.right and self.pers_name_rect.y < mouse[1] < self.pers_name_rect.bottom:
                 self.pers_name = self.font_btns.render(self.characters[self.pers].name, False, (255, 0, 0))
                 if pressed_mouse:
-                    self.mode += 1
+                    self.mode = 3
             else:
                 self.arrow_left = self.font_btns.render('<', False, (255, 255, 255))
                 self.arrow_right = self.font_btns.render('>', False, (255, 255, 255))
