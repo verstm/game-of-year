@@ -7,7 +7,7 @@ import random
 ASSETS_PATH = 'Assets/'
 G = 1
 controls = [[pygame.K_w, pygame.K_d, pygame.K_s, pygame.K_a, pygame.K_SPACE, pygame.KMOD_SHIFT, pygame.K_q, pygame.K_w,
-             pygame.K_e, pygame.K_r]]
+             pygame.K_e, pygame.K_r, pygame.K_t]]
 DEBUG = True
 
 
@@ -77,6 +77,7 @@ class Pawn:
         animpath_run = ASSETS_PATH + 'Sprites/Animations/running_1/'
         animpath_atk = ASSETS_PATH + 'sprites/Animations/attacking/'
         self.image = pygame.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')
+        self.image.set_colorkey((255, 255, 255))
         self.idle_right = [pygame.image.load(ASSETS_PATH + 'Sprites/Static/Human/idle1.png')]
         self.idle_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.idle_right))
         self.default_animation = lambda: self.idle_right if self.last_direction else self.idle_left
@@ -241,6 +242,7 @@ class Pawn:
         animlen = len(self.current_animation)
         if self.animation_counter[0] / self.animframes_divisor < animlen:
             self.image = self.current_animation[int(self.animation_counter[0] / self.animframes_divisor)]
+            self.image.set_colorkey((255, 255, 255))
             self.animation_counter[0] += 1
         else:
             if self.animation_counter[1]:
@@ -380,7 +382,6 @@ class Human(Pawn, pygame.sprite.Sprite):
                     alpha += 180
                 self.alpha = alpha
             elif not mouse[0]:
-                print('none alpha')
                 self.alpha = None
                 self.mouse_was_pressed = 0
         else:
@@ -505,6 +506,8 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         self.maxcd[self.pellets] = 300
         self.cd[self.explosive_pellets] = 0
         self.maxcd[self.explosive_pellets] = 52 + 180
+        self.cd[self.sawblade] = 0
+        self.maxcd[self.sawblade] = 180
         self.cd[self.rope] = 0
         self.maxcd[self.rope] = 240
         self.WIDTH = WIDTH
@@ -512,6 +515,8 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         self.game = game
         self.screen = screen
         self.FPS = FPS
+        self.flag_sawblade = False
+        self.sawblade_direction = False
 
     def control(self, keys, mouse):
         global flg
@@ -549,6 +554,19 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
             else:
                 self.jumpflg = 0
 
+            if 6 in keys and not self.cd[self.gblaster]:
+                self.horizontal_speed = 0
+                self.vertical_speed = 0
+                self.gblaster()
+            if 7 in keys and not self.cd[self.pellets]:
+                self.pellets()
+            if 8 in keys and not self.cd[self.explosive_pellets]:
+                self.explosive_pellets()
+            if 9 in keys and not self.cd[self.rope]:
+                self.rope()
+            if 10 in keys and not self.cd[self.sawblade]:
+                self.sawblade()
+
             if mouse[0] and self.cd[self.mouse] == 0 and not self.mouse_was_pressed:
                 self.mouse_was_pressed = 1
                 pos = pygame.mouse.get_pos()
@@ -563,7 +581,6 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
                     alpha += 180
                 self.alpha = alpha
             elif not mouse[0]:
-                print('none alpha')
                 self.alpha = None
                 self.mouse_was_pressed = 0
         else:
@@ -585,7 +602,8 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         self.group.draw(self.screen)
         self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
                      self.horizontal_speed, self.x, self.y, self.keys, self.mouse_arr, self.alpha]
-
+        self.objectgroup.update()
+        self.objectgroup.draw(self.screen)
         self.update_cd()
 
     def attack(self):
@@ -690,7 +708,7 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
             self.combo.pop(-1)
 
     def gblaster(self):
-        self.flag_restrict_movement = True
+        self.stun_cnt = max(self.stun_cnt, 90)
         if self.last_direction:
             self.blaster = Blaster(self.rect.x + self.rect.width // 3, self.rect.y + self.rect.height // 3, self,
                                    'right', self.screen)
@@ -716,7 +734,7 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
             x = random.randint(self.rect.right, self.rect.right + self.rect.width // 2)
             y = random.randint(self.rect.y + self.rect.height // 3, self.rect.y + self.rect.height // 1.5)
             self.objectgroup.add(Explosive_Pellet(x, y, self))
-        self.flag_restrict_movement = True
+        self.stun_cnt = max(self.stun_cnt, 35)
         self.cd[self.explosive_pellets] = 1
 
     def rope(self):
@@ -726,7 +744,11 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
             self.objectgroup.add(Rope(self.rect.x, self.rect.y + self.rect.height // 3, self, self.last_direction))
         self.cd[self.rope] = 1
 
-
+    def sawblade(self):
+        self.flag_sawblade = True
+        self.sawblade_direction = self.last_direction
+        self.objectgroup.add(Sawblade(self.rect.x, self.rect.y + self.rect.height // 3, self, self.last_direction))
+        self.cd[self.sawblade] = 1
 class Blaster(Object, pygame.sprite.Sprite):
     def __init__(self, x, y, parent, direction, screen):
         pygame.sprite.Sprite.__init__(self)
@@ -750,6 +772,7 @@ class Blaster(Object, pygame.sprite.Sprite):
         self.ray.rect.centery = self.rect.centery
 
     def update(self):
+        print('here')
         if self.cnt < self.shoot_max:
             self.cnt += 1
             if self.cnt >= self.idle_max:
@@ -821,6 +844,7 @@ class Explosive_Pellet(Object, pygame.sprite.Sprite):
         else:
             self.cnt = 0
             self.parent.objectgroup.remove(self)
+            print('here')
             self.parent.flag_restrict_movement = False
 
 class Rope(Object, pygame.sprite.Sprite):
@@ -862,6 +886,7 @@ class Rope(Object, pygame.sprite.Sprite):
                 else:
                     self.max_len = self.parent.rect.width * 5
                     self.parent.enemy.image = pygame.image.load(os.path.join(self.path, 'bdsm_right.png'))
+                    self.parent.enemy.image.set_colorkey((255, 255, 255))
                     self.parent.enemy.move(self.speed, 0)
                     self.len += self.speed
                     self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')), (self.len, self.needed_width))
@@ -885,6 +910,7 @@ class Rope(Object, pygame.sprite.Sprite):
                     y = self.rect.y
                     self.max_len = self.parent.rect.width * 5
                     self.parent.enemy.image = pygame.image.load(os.path.join(self.path, 'bdsm_left.png'))
+                    self.parent.enemy.image.set_colorkey((255, 255 ,255))
                     self.parent.enemy.move(-self.speed, 0)
                     self.len += self.speed
                     self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')), (self.len, self.needed_width))
@@ -892,4 +918,38 @@ class Rope(Object, pygame.sprite.Sprite):
                     self.rect.right = x
                     self.rect.y = y
         else:
+            self.parent.objectgroup.remove(self)
+
+class Sawblade(Object, pygame.sprite.Sprite):
+    def __init__(self, x, y, parent, direction):
+        super().__init__(x, y, 'sawblade.png', parent)
+        path = os.path.join(os.path.dirname(__file__), 'Assets')
+        self.path = os.path.join(path, 'Sprites')
+        self.flag_dragged = False
+        self.cnt = 0
+        self.speed = 20
+        self.angle = 0
+        self.direction = direction
+        self.image_initial = pygame.image.load(os.path.join(self.path, 'sawblade.png'))
+        self.speed = 10
+    def update(self):
+        print('here')
+        self.move(self.speed if self.direction else -self.speed, 0)
+        self.cnt += 1
+        self.angle += 3
+        x = self.rect.x
+        y = self.rect.y
+        self.image = pygame.transform.rotate(self.image_initial, self.angle)
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = x, y
+        if self.direction:
+            self.rect.x += self.speed
+        else:
+            self.rect.x -= self.speed
+        for hit in pygame.sprite.spritecollide(self, self.parent.enemygroup, False):
+            try:
+                hit.HP -= 20
+            except Exception as e:
+                pass
+        if self.rect.x > self.parent.WIDTH + self.rect.width or self.rect.x < 0:
             self.parent.objectgroup.remove(self)
