@@ -115,7 +115,6 @@ class Pawn:
         self.enemygroup = ''
 
     def move(self, x, y):
-        # print(x, y)
         camerax, cameray = self.game.camera.cam_x, self.game.camera.cam_y
         x2 = self.rect.x
         y2 = self.rect.y
@@ -125,7 +124,6 @@ class Pawn:
         t = self.rect.top
         lastx, lasty = 0, 0
         area = self.game.map.hitboxes
-        # print(area[self.rect.x, self.rect.y]) if area[self.rect.x, self.rect.y] else 0
         self.left, self.right, self.top, self.bottom = False, False, False, False
         for j in range(1, abs(x) + 1):
             if x2 - j <= 0:
@@ -279,15 +277,15 @@ class Pawn:
         self.enemy.stun_cnt = max(30, self.enemy.stun_cnt)
         self.enemy.hang_cnt = max(30, self.enemy.hang_cnt)
         self.cd[self.mouse] = 1
-        if alpha > 340 or alpha <= 20:
+        if alpha > 330 or alpha <= 30:
             self.combo.append(1)
-        elif alpha > 20 and alpha <= 90:
+        elif alpha > 30 and alpha <= 90:
             self.combo.append(-3)
-        elif alpha > 90 and alpha <= 160:
+        elif alpha > 90 and alpha <= 150:
             self.combo.append(-2)
-        elif alpha > 160 and alpha <= 200:
+        elif alpha > 150 and alpha <= 210:
             self.combo.append(-1)
-        elif alpha > 200 and alpha <= 270:
+        elif alpha > 210 and alpha <= 270:
             self.combo.append(3)
         elif alpha > 270 and alpha <= 340:
             self.combo.append(2)
@@ -315,8 +313,7 @@ class Human(Pawn, pygame.sprite.Sprite):
         if self.main_chr:
             self.events_check()
         self.control(self.keys, self.mouse_arr)
-        '''if not self.main_chr:
-            print(self.alpha)'''
+
         if self.alpha != None:
             self.mouse(self.alpha)
         self.cam_targeting(self.main_chr)
@@ -380,7 +377,6 @@ class Human(Pawn, pygame.sprite.Sprite):
                     alpha += 180
                 self.alpha = alpha
             elif not mouse[0]:
-                print('none alpha')
                 self.alpha = None
                 self.mouse_was_pressed = 0
         else:
@@ -391,6 +387,9 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.hang_cnt = max(30, self.hang_cnt)
 
     def attack(self):
+        if not self.main_chr:
+            print(self.combo)
+            print(self.alpha)
         rng = 10
         if time.time() - self.last_combo_time >= self.combo_expiration:
             self.combo = [self.combo[-1]]
@@ -405,7 +404,6 @@ class Human(Pawn, pygame.sprite.Sprite):
                     i.hang_cnt = self.combo_info['1'][2]
                     i.HP -= self.combo_info['1'][3]
                 self.set_animation(self.combo1_1_right, False, 0.5)
-                print(ht)
             elif self.combo == [1, 1]:
                 ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
                                         self.rect.x + (self.rect.width) + rng,
@@ -429,6 +427,7 @@ class Human(Pawn, pygame.sprite.Sprite):
 
                 self.set_animation(self.combo1_3_right, False, 0.5)
             elif self.combo == [1, 1, 1, 1]:
+
                 ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
                                         self.rect.x + (self.rect.width) + rng,
                                         self.rect.y + self.rect.width)
@@ -450,7 +449,6 @@ class Human(Pawn, pygame.sprite.Sprite):
                     i.hang_cnt = self.combo_info['-1'][2]
                     i.HP -= self.combo_info['-1'][3]
                 self.set_animation(self.combo1_1_left, False, 0.5)
-                print(ht)
             elif self.combo == [-1, -1]:
                 ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
                                         self.rect.x - rng,
@@ -563,7 +561,6 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
                     alpha += 180
                 self.alpha = alpha
             elif not mouse[0]:
-                print('none alpha')
                 self.alpha = None
                 self.mouse_was_pressed = 0
         else:
@@ -573,8 +570,7 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         if self.main_chr:
             self.events_check()
         self.control(self.keys, self.mouse_arr)
-        '''if not self.main_chr:
-            print(self.alpha)'''
+
         if self.alpha != None:
             self.mouse(self.alpha)
         self.cam_targeting(self.main_chr)
@@ -603,7 +599,6 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
                     i.hang_cnt = self.combo_info['1'][2]
                     i.HP -= self.combo_info['1'][3]
                 self.set_animation(self.combo1_1_right, False, 0.5)
-                print(ht)
             elif self.combo == [1, 1]:
                 ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
                                         self.rect.x + (self.rect.width) + rng,
@@ -648,7 +643,6 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
                     i.hang_cnt = self.combo_info['-1'][2]
                     i.HP -= self.combo_info['-1'][3]
                 self.set_animation(self.combo1_1_left, False, 0.5)
-                print(ht)
             elif self.combo == [-1, -1]:
                 ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
                                         self.rect.x - rng,
@@ -806,7 +800,6 @@ class Explosive_Pellet(Object, pygame.sprite.Sprite):
             self.cnt += 1
             if self.cnt > self.cnt_idle:
                 cnt2 = (self.cnt - self.cnt_idle) // 2
-                print(cnt2)
                 x, y = self.rect.center
                 self.image = pygame.image.load(os.path.join(self.path, f'_{cnt2}.png'))
                 self.rect = self.image.get_rect()

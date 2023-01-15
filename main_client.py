@@ -30,7 +30,6 @@ clock = pygame.time.Clock()
 
 class EchoServer(protocol.Protocol):
 
-
     def connectionMade(self):
         game.connected = 1
 
@@ -39,7 +38,7 @@ class EchoServer(protocol.Protocol):
         game.pack = recv_pack
         send_pack = game.info
         self.transport.write(str(send_pack).encode())
-        clock.tick(FPS)
+        #clock.tick(FPS)
 
     def connectionLost(self, reason):
         game.connected = 0
@@ -58,7 +57,7 @@ class EchoClient(protocol.Protocol):
         game.pack = recv_pack
         send_pack = game.info
         self.transport.write(str(send_pack).encode())
-        clock.tick(FPS)
+        # clock.tick(FPS)
 
     def connectionLost(self, reason):
         game.connected = 0
@@ -118,6 +117,7 @@ class Main:
             self.mode, self.pers1 = self.menu.update()
             if self.mode == 2:
                 self.gui = GUI(self.pers1, self.pers2, self.WIDTH, self.HEIGHT, self.screen)
+                self.mode += 1
             self.set_enemies()
         if self.mode == 2:
             self.map.update()
@@ -160,17 +160,16 @@ class Main:
         # pack = [self.pers1.info, self.pers2.info]
         # persinfo = [self.HP, self.maxHP, self.name, self.pic, animsforinfo, self.animation_counter]
         pack = deepcopy(self.pack)
-        print(pack)
         characters = [self.pers2]
         for i in range(len(characters)):
             characters[i].HP = pack[i][0]
             characters[i].maxHP = pack[i][1]
             characters[i].name = pack[i][2]
             characters[i].pic = pack[i][3]
-            #characters[i].vertical_speed = pack[i][5]
-            #characters[i].horizontal_speed = pack[i][6]
-            #characters[i].x = pack[i][7]
-            #characters[i].y = pack[i][8]
+            # characters[i].vertical_speed = pack[i][5]
+            # characters[i].horizontal_speed = pack[i][6]
+            characters[i].x = pack[i][7]
+            characters[i].y = pack[i][8]
             characters[i].keys = pack[i][9]
             characters[i].mouse_arr = pack[i][10]
             characters[i].alpha = pack[i][11]
