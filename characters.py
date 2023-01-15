@@ -4,11 +4,12 @@ from math import sin, cos, acos, hypot
 import time
 import random
 
-
 ASSETS_PATH = 'Assets/'
 G = 1
-controls = [[pygame.K_w, pygame.K_d, pygame.K_s, pygame.K_a, pygame.K_SPACE, pygame.KMOD_SHIFT, pygame.K_q, pygame.K_w, pygame.K_e]]
+controls = [[pygame.K_w, pygame.K_d, pygame.K_s, pygame.K_a, pygame.K_SPACE, pygame.KMOD_SHIFT, pygame.K_q, pygame.K_w,
+             pygame.K_e]]
 DEBUG = True
+
 
 class Object(pygame.sprite.Sprite):
     def __init__(self, x, y, image, parent, width=None, height=None):
@@ -35,6 +36,9 @@ class Pawn:
         self.game = game
         self.screen = screen
         self.FPS = FPS
+        self.keys = []
+        self.mouse_arr = (False, False, False)
+        self.alpha = None
         self.truecords = (self.WIDTH // 2, self.HEIGHT // 2)
         self.x, self.y = 0, 0
         pygame.sprite.Sprite.__init__(self)
@@ -102,7 +106,7 @@ class Pawn:
         self.name = 'Human'
         self.combo_expiration = 1
         self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
-                     self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
+                     self.horizontal_speed, self.x, self.y, self.keys, self.mouse_arr, self.alpha]
         self.enemy = ''
         self.combo_info = {'1': [15, 15, 15, 10], '11': [15, 15, 15, 10], '111': [30, 15, 15, 15],
                            '1111': [15, 15, 0, 20], '-1': [15, 15, 15, 10], '-1-1': [15, 15, 15, 10],
@@ -208,7 +212,9 @@ class Pawn:
             x = controls[self.controls_num][i]
             if keyboard[x]:
                 keys.append(i)
-        self.control(keys, mouse)
+        self.keys = keys
+        self.mouse_arr = mouse
+        # self.control(keys, mouse)
 
     def physics(self):
         if self.horizontal_speed < 0:
@@ -308,6 +314,11 @@ class Human(Pawn, pygame.sprite.Sprite):
     def update(self):
         if self.main_chr:
             self.events_check()
+        self.control(self.keys, self.mouse_arr)
+        '''if not self.main_chr:
+            print(self.alpha)'''
+        if self.alpha != None:
+            self.mouse(self.alpha)
         self.cam_targeting(self.main_chr)
 
         self.physics()
@@ -315,7 +326,7 @@ class Human(Pawn, pygame.sprite.Sprite):
         self.animation_update()
         self.group.draw(self.screen)
         self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
-                     self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
+                     self.horizontal_speed, self.x, self.y, self.keys, self.mouse_arr, self.alpha]
 
         self.update_cd()
 
@@ -323,7 +334,6 @@ class Human(Pawn, pygame.sprite.Sprite):
         global flg
         speed = 3
         right, left = 1, 3
-        keys_1 = pygame.key.get_pressed()
         if self.current_animation == self.runanimation_right and not right in keys:
             self.set_animation(self.stoppinganimation_right, True)
         if self.current_animation == self.runanimation_left and not left in keys:
@@ -368,11 +378,12 @@ class Human(Pawn, pygame.sprite.Sprite):
                 alpha = acos(cosalpha) * 57.3
                 if sinalpha < 0:
                     alpha += 180
-                self.mouse(alpha)
+                self.alpha = alpha
             elif not mouse[0]:
+                print('none alpha')
+                self.alpha = None
                 self.mouse_was_pressed = 0
         else:
-            print('here')
             self.stun_cnt -= 1
 
     def debug_stun(self):
@@ -480,6 +491,7 @@ class Human(Pawn, pygame.sprite.Sprite):
         else:
             self.combo.pop(-1)
 
+
 class Not_Gaster(Pawn, pygame.sprite.Sprite):
     def __init__(self, WIDTH, HEIGHT, game, screen, FPS):
         super().__init__(WIDTH, HEIGHT, game, screen, FPS)
@@ -498,7 +510,7 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         self.game = game
         self.screen = screen
         self.FPS = FPS
-    
+
     def control(self, keys, mouse):
         global flg
         speed = 3
@@ -561,7 +573,6 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
             elif not mouse[0]:
                 self.mouse_was_pressed = 0
         else:
-            print('here')
             self.stun_cnt -= 1
 
     def update(self):
@@ -579,6 +590,7 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         self.update_cd()
         self.objectgroup.update()
         self.objectgroup.draw(self.screen)
+
     def attack(self):
         rng = 10
         if time.time() - self.last_combo_time >= self.combo_expiration:
@@ -683,12 +695,14 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
     def gblaster(self):
         self.flag_restrict_movement = True
         if self.last_direction:
-            self.blaster = Blaster(self.rect.x + self.rect.width // 3, self.rect.y + self.rect.height // 3, self, 'right', self.screen)
+            self.blaster = Blaster(self.rect.x + self.rect.width // 3, self.rect.y + self.rect.height // 3, self,
+                                   'right', self.screen)
         else:
-            self.blaster = Blaster(self.rect.x - self.rect.width // 3 - 41, self.rect.y + self.rect.height // 3, self, 'left', self.screen)
+            self.blaster = Blaster(self.rect.x - self.rect.width // 3 - 41, self.rect.y + self.rect.height // 3, self,
+                                   'left', self.screen)
         self.objectgroup.add(self.blaster)
         self.cd[self.gblaster] = 1
-    
+
     def pellets(self):
         for i in range(15):
             x = random.randint(self.rect.x - self.rect.width * 2, self.rect.x + self.rect.width * 2)
@@ -708,6 +722,7 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         self.flag_restrict_movement = True
         self.cd[self.explosive_pellets] = 1
 
+
 class Blaster(Object, pygame.sprite.Sprite):
     def __init__(self, x, y, parent, direction, screen):
         pygame.sprite.Sprite.__init__(self)
@@ -725,7 +740,7 @@ class Blaster(Object, pygame.sprite.Sprite):
         self.ray.rect = self.ray.image.get_rect()
         if self.direction == 1:
             self.rect.x += self.parent.rect.width
-            self.ray.rect.x = self.rect.x  + 5
+            self.ray.rect.x = self.rect.x + 5
         else:
             self.ray.rect.right = self.rect.x - 5
         self.ray.rect.centery = self.rect.centery
@@ -744,6 +759,7 @@ class Blaster(Object, pygame.sprite.Sprite):
             self.cnt = 0
             self.parent.flag_restrict_movement = False
             self.parent.objectgroup.remove(self)
+
 
 class Pellet(Object, pygame.sprite.Sprite):
     def __init__(self, x, y, parent, WIDTH, HEIGHT):
@@ -766,8 +782,9 @@ class Pellet(Object, pygame.sprite.Sprite):
                 self.parent.objectgroup.remove(self)
             except Exception as e:
                 pass
-        if not(0 < self.rect.x < self.WIDTH and 0 < self.rect.y < self.HEIGHT):
+        if not (0 < self.rect.x < self.WIDTH and 0 < self.rect.y < self.HEIGHT):
             self.parent.objectgroup.remove(self)
+
 
 class Explosive_Pellet(Object, pygame.sprite.Sprite):
     def __init__(self, x, y, parent):
@@ -779,6 +796,7 @@ class Explosive_Pellet(Object, pygame.sprite.Sprite):
         path = os.path.join(path, 'Sprites')
         path = os.path.join(path, 'Animations')
         self.path = os.path.join(path, 'explosion')
+
     def update(self):
         if self.cnt < self.cnt_max:
             self.cnt += 1
@@ -797,8 +815,6 @@ class Explosive_Pellet(Object, pygame.sprite.Sprite):
                     except Exception as e:
                         pass
         else:
-            print('here')
             self.cnt = 0
             self.parent.objectgroup.remove(self)
             self.parent.flag_restrict_movement = False
-    
