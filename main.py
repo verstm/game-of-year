@@ -30,7 +30,6 @@ clock = pygame.time.Clock()
 
 class EchoServer(protocol.Protocol):
 
-
     def connectionMade(self):
         game.connected = 1
 
@@ -118,6 +117,7 @@ class Main:
             self.mode, self.pers1 = self.menu.update()
             if self.mode == 2:
                 self.gui = GUI(self.pers1, self.pers2, self.WIDTH, self.HEIGHT, self.screen)
+                self.mode += 1
             self.set_enemies()
         if self.mode == 2:
             self.map.update()
@@ -167,10 +167,10 @@ class Main:
             characters[i].maxHP = pack[i][1]
             characters[i].name = pack[i][2]
             characters[i].pic = pack[i][3]
-            #characters[i].vertical_speed = pack[i][5]
-            #characters[i].horizontal_speed = pack[i][6]
-            #characters[i].x = pack[i][7]
-            #characters[i].y = pack[i][8]
+            # characters[i].vertical_speed = pack[i][5]
+            # characters[i].horizontal_speed = pack[i][6]
+            # characters[i].x = pack[i][7]
+            # characters[i].y = pack[i][8]
             characters[i].keys = pack[i][9]
             characters[i].mouse_arr = pack[i][10]
             characters[i].alpha = pack[i][11]

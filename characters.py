@@ -517,7 +517,6 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         global flg
         speed = 3
         right, left = 1, 3
-        keys_1 = pygame.key.get_pressed()
         if self.current_animation == self.runanimation_right and not right in keys:
             self.set_animation(self.stoppinganimation_right, True)
         if self.current_animation == self.runanimation_left and not left in keys:
@@ -535,33 +534,20 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
             if 2 in keys:
                 ...
                 # self.move(0, speed)
-            if not self.flag_restrict_movement:
-                if right in keys and self.bottom:
-                    self.horizontal_speed += speed
-                    self.set_animation(self.runanimation_right)
-                    # self.move(speed, 0)
-                if left in keys and self.bottom:
-                    self.horizontal_speed -= speed
-                    self.set_animation(self.runanimation_left)
-                    # self.move(-speed, 0)
+            if right in keys and self.bottom:
+                self.horizontal_speed += speed
+                self.set_animation(self.runanimation_right)
+                # self.move(speed, 0)
+            if left in keys and self.bottom:
+                self.horizontal_speed -= speed
+                self.set_animation(self.runanimation_left)
+                # self.move(-speed, 0)
 
-                if 4 in keys and (self.jumpflg or self.bottom) and self.vertical_speed > -15:
-                    self.jumpflg = 1
-                    self.vertical_speed += -self.jump_power
-                else:
-                    self.jumpflg = 0
-
-                if 6 in keys and not self.cd[self.gblaster]:
-                    self.horizontal_speed = 0
-                    self.vertical_speed = 0
-                    self.gblaster()
-                if 7 in keys and not self.cd[self.pellets]:
-                    self.pellets()
-                if 8 in keys and not self.cd[self.explosive_pellets]:
-                    self.explosive_pellets()
-                
-                if 9 in keys and not self.cd[self.rope]:
-                    self.rope()
+            if 4 in keys and (self.jumpflg or self.bottom) and self.vertical_speed > -15:
+                self.jumpflg = 1
+                self.vertical_speed += -self.jump_power
+            else:
+                self.jumpflg = 0
 
             if mouse[0] and self.cd[self.mouse] == 0 and not self.mouse_was_pressed:
                 self.mouse_was_pressed = 1
@@ -575,8 +561,10 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
                 alpha = acos(cosalpha) * 57.3
                 if sinalpha < 0:
                     alpha += 180
-                self.mouse(alpha)
+                self.alpha = alpha
             elif not mouse[0]:
+                print('none alpha')
+                self.alpha = None
                 self.mouse_was_pressed = 0
         else:
             self.stun_cnt -= 1
@@ -584,6 +572,11 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
     def update(self):
         if self.main_chr:
             self.events_check()
+        self.control(self.keys, self.mouse_arr)
+        '''if not self.main_chr:
+            print(self.alpha)'''
+        if self.alpha != None:
+            self.mouse(self.alpha)
         self.cam_targeting(self.main_chr)
 
         self.physics()
@@ -591,11 +584,9 @@ class Not_Gaster(Pawn, pygame.sprite.Sprite):
         self.animation_update()
         self.group.draw(self.screen)
         self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
-                     self.horizontal_speed, self.x, self.y, self.rect.x, self.rect.y]
+                     self.horizontal_speed, self.x, self.y, self.keys, self.mouse_arr, self.alpha]
 
         self.update_cd()
-        self.objectgroup.update()
-        self.objectgroup.draw(self.screen)
 
     def attack(self):
         rng = 10

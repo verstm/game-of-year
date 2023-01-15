@@ -260,7 +260,7 @@ class Menu:
             elif self.pers_name_rect.x < mouse[0] < self.pers_name_rect.right and self.pers_name_rect.y < mouse[1] < self.pers_name_rect.bottom:
                 self.pers_name = self.font_btns.render(self.characters[self.pers].name, False, (255, 0, 0))
                 if pressed_mouse:
-                    self.mode = 3
+                    self.mode += 1
             else:
                 self.arrow_left = self.font_btns.render('<', False, (255, 255, 255))
                 self.arrow_right = self.font_btns.render('>', False, (255, 255, 255))
