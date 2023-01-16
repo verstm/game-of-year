@@ -99,6 +99,11 @@ class Pawn:
         self.combo1_2_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_2_right))
         self.combo1_3_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_3_right))
         self.combo1_4_left = list(map(lambda i: pygame.transform.flip(i, True, False), self.combo1_4_right))
+        self.fly_left = pygame.image.load(ASSETS_PATH + 'Sprites\Static\Human\otlet.png')
+        self.fly_right = pygame.transform.flip(self.fly_left, True, False)
+        self.dmg_right = pygame.image.load(ASSETS_PATH + 'Sprites\Static\Human\\bolno.png')
+        self.dmg_left = pygame.transform.flip(self.dmg_right, True, False)
+
         self.combocd = [0.2]
         self.animation_counter = [0, 0]
         self.moves = []
@@ -108,6 +113,8 @@ class Pawn:
         self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
                      self.horizontal_speed, self.x, self.y, self.keys, self.mouse_arr, self.alpha]
         self.enemy = ''
+        # enemy.stun, self.hang, enemy.hang, damage
+
         self.combo_info = {'1': [15, 15, 15, 10], '11': [15, 15, 15, 10], '111': [30, 15, 15, 15],
                            '1111': [15, 15, 0, 20], '-1': [15, 15, 15, 10], '-1-1': [15, 15, 15, 10],
                            '-1-1-1': [30, 15, 15, 15],
@@ -303,6 +310,14 @@ class Pawn:
         hits = pygame.sprite.spritecollide(self.atk_hitbox, self.enemygroup, False)
         return hits
 
+    def stun_update(self):
+        if self.stun_cnt:
+            if self.last_direction:
+                self.set_animation([self.dmg_left], loop=True)
+            else:
+                self.set_animation([self.dmg_right], loop=True)
+            self.stun_cnt -= 1
+
 
 class Human(Pawn, pygame.sprite.Sprite):
     def __init__(self, WIDTH, HEIGHT, game, screen, FPS):
@@ -312,19 +327,18 @@ class Human(Pawn, pygame.sprite.Sprite):
     def update(self):
         if self.main_chr:
             self.events_check()
+        else:
+            print(self.combo)
         self.control(self.keys, self.mouse_arr)
-
+        self.stun_update()
         if self.alpha != None:
             self.mouse(self.alpha)
         self.cam_targeting(self.main_chr)
-
         self.physics()
-        # self.rect.x, self.rect.y = self.x, self.y
         self.animation_update()
         self.group.draw(self.screen)
         self.info = [self.HP, self.maxHP, self.name, self.pic, self.animation_counter, self.vertical_speed,
                      self.horizontal_speed, self.x, self.y, self.keys, self.mouse_arr, self.alpha]
-
         self.update_cd()
 
     def control(self, keys, mouse):
@@ -375,12 +389,13 @@ class Human(Pawn, pygame.sprite.Sprite):
                 alpha = acos(cosalpha) * 57.3
                 if sinalpha < 0:
                     alpha += 180
-                self.alpha = alpha
+                if self.main_chr:
+                    self.alpha = alpha
             elif not mouse[0]:
                 self.alpha = None
                 self.mouse_was_pressed = 0
-        else:
-            self.stun_cnt -= 1
+            elif self.mouse_was_pressed:
+                self.alpha = None
 
     def debug_stun(self):
         self.stun_cnt = max(30, self.stun_cnt)
@@ -404,6 +419,7 @@ class Human(Pawn, pygame.sprite.Sprite):
                     i.hang_cnt = self.combo_info['1'][2]
                     i.HP -= self.combo_info['1'][3]
                 self.set_animation(self.combo1_1_right, False, 0.5)
+                self.last_direction = 1
             elif self.combo == [1, 1]:
                 ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
                                         self.rect.x + (self.rect.width) + rng,
@@ -415,6 +431,7 @@ class Human(Pawn, pygame.sprite.Sprite):
                     i.HP -= self.combo_info['11'][3]
 
                 self.set_animation(self.combo1_2_right, False, 0.5)
+                self.last_direction = 1
             elif self.combo == [1, 1, 1]:
                 ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
                                         self.rect.x + (self.rect.width) + rng,
@@ -426,8 +443,8 @@ class Human(Pawn, pygame.sprite.Sprite):
                     i.HP -= self.combo_info['111'][3]
 
                 self.set_animation(self.combo1_3_right, False, 0.5)
+                self.last_direction = 1
             elif self.combo == [1, 1, 1, 1]:
-
                 ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
                                         self.rect.x + (self.rect.width) + rng,
                                         self.rect.y + self.rect.width)
@@ -436,8 +453,10 @@ class Human(Pawn, pygame.sprite.Sprite):
                     i.stun_cnt = self.combo_info['1111'][0]
                     i.hang_cnt = self.combo_info['1111'][2]
                     i.HP -= self.combo_info['1111'][3]
-                    i.knockback(45, 150)
+                    i.knockback(45, 100)
+
                 self.set_animation(self.combo1_4_right, False, 0.5)
+                self.last_direction = 1
                 self.combo = []
             elif self.combo == [-1]:
                 ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
@@ -449,6 +468,7 @@ class Human(Pawn, pygame.sprite.Sprite):
                     i.hang_cnt = self.combo_info['-1'][2]
                     i.HP -= self.combo_info['-1'][3]
                 self.set_animation(self.combo1_1_left, False, 0.5)
+                self.last_direction = 0
             elif self.combo == [-1, -1]:
                 ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
                                         self.rect.x - rng,
@@ -460,6 +480,7 @@ class Human(Pawn, pygame.sprite.Sprite):
                     i.HP -= self.combo_info['-1-1'][3]
 
                 self.set_animation(self.combo1_2_left, False, 0.5)
+                self.last_direction = 0
             elif self.combo == [-1, -1, -1]:
                 ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
                                         self.rect.x - rng,
@@ -471,6 +492,7 @@ class Human(Pawn, pygame.sprite.Sprite):
                     i.HP -= self.combo_info['-1-1-1'][3]
 
                 self.set_animation(self.combo1_3_left, False, 0.5)
+                self.last_direction = 0
             elif self.combo == [-1, -1, -1, -1]:
                 ht = self.attack_hitbox(self.rect.x + (self.rect.width // 2), self.rect.y,
                                         self.rect.x - rng,
@@ -480,9 +502,11 @@ class Human(Pawn, pygame.sprite.Sprite):
                     i.stun_cnt = self.combo_info['-1-1-1-1'][0]
                     i.hang_cnt = self.combo_info['-1-1-1-1'][2]
                     i.HP -= self.combo_info['-1-1-1-1'][3]
-                    i.knockback(180 - 45, 150)
+                    i.knockback(180 - 45, 100)
                 self.set_animation(self.combo1_4_left, False, 0.5)
                 self.combo = []
+                self.last_direction = 0
+
             else:
                 self.combo = []
             self.last_combo_time = time.time()
@@ -816,6 +840,7 @@ class Explosive_Pellet(Object, pygame.sprite.Sprite):
             self.parent.objectgroup.remove(self)
             self.parent.flag_restrict_movement = False
 
+
 class Rope(Object, pygame.sprite.Sprite):
     def __init__(self, x, y, parent, direction):
         super().__init__(x, y, 'rope.png', parent)
@@ -823,7 +848,8 @@ class Rope(Object, pygame.sprite.Sprite):
         self.path = os.path.join(path, 'Sprites')
         self.needed_width = 10
         self.len = 20
-        self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')), (self.len, self.needed_width))
+        self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')),
+                                            (self.len, self.needed_width))
         self.rect = self.image.get_rect()
         self.rect.y = y
         self.parent = parent
@@ -835,13 +861,15 @@ class Rope(Object, pygame.sprite.Sprite):
         self.speed = 40
         self.hit = False
         self.max_len = 2 * self.parent.rect.width
+
     def update(self):
         if self.len < self.max_len:
             if self.direction:
                 if not self.hit:
                     x = self.rect.x
                     y = self.rect.y
-                    self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')), (self.len, self.needed_width))
+                    self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')),
+                                                        (self.len, self.needed_width))
                     self.rect = self.image.get_rect()
                     self.len += self.speed
                     self.rect.x = x
@@ -857,12 +885,14 @@ class Rope(Object, pygame.sprite.Sprite):
                     self.parent.enemy.image = pygame.image.load(os.path.join(self.path, 'bdsm_right.png'))
                     self.parent.enemy.move(self.speed, 0)
                     self.len += self.speed
-                    self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')), (self.len, self.needed_width))
+                    self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')),
+                                                        (self.len, self.needed_width))
             else:
                 if not self.hit:
                     x = self.rect.right
                     y = self.rect.y
-                    self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')), (self.len, self.rect.height))
+                    self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')),
+                                                        (self.len, self.rect.height))
                     self.rect = self.image.get_rect()
                     self.len += self.speed
                     self.rect.right = x
@@ -880,7 +910,8 @@ class Rope(Object, pygame.sprite.Sprite):
                     self.parent.enemy.image = pygame.image.load(os.path.join(self.path, 'bdsm_left.png'))
                     self.parent.enemy.move(-self.speed, 0)
                     self.len += self.speed
-                    self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')), (self.len, self.needed_width))
+                    self.image = pygame.transform.scale(pygame.image.load(os.path.join(self.path, 'rope.png')),
+                                                        (self.len, self.needed_width))
                     self.rect = self.image.get_rect()
                     self.rect.right = x
                     self.rect.y = y
