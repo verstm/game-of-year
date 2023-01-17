@@ -159,7 +159,7 @@ class Menu:
         self.game = game
         self.screen = screen
         self.FPS = FPS
-        self.characters = [Human(WIDTH, HEIGHT, game, screen, FPS), Not_Gaster(WIDTH, HEIGHT, game, screen, FPS)]
+        self.characters = [Not_Gaster(WIDTH, HEIGHT, game, screen, FPS), Human(WIDTH, HEIGHT, game, screen, FPS)]
         self.pers = 1
         print('menu initialized')
         self.screen_rect = self.screen.get_rect()
