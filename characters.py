@@ -321,6 +321,11 @@ class Pawn:
             else:
                 self.set_animation([self.dmg_right], loop=True)
             self.stun_cnt -= 1
+        else:
+            if self.current_animation == [self.dmg_right]:
+                self.set_animation(self.idle_right, 1)
+            if self.current_animation == [self.dmg_left]:
+                self.set_animation(self.idle_left, 1)
 
 
 class Human(Pawn, pygame.sprite.Sprite):
