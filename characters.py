@@ -114,11 +114,11 @@ class Pawn:
                      self.horizontal_speed, self.x, self.y, self.keys, self.mouse_arr, self.alpha]
         self.enemy = ''
         # enemy.stun, self.hang, enemy.hang, damage
-
-        self.combo_info = {'1': [15, 15, 15, 10], '11': [15, 15, 15, 10], '111': [30, 15, 15, 15],
-                           '1111': [15, 15, 0, 20], '-1': [15, 15, 15, 10], '-1-1': [15, 15, 15, 10],
-                           '-1-1-1': [30, 15, 15, 15],
-                           '-1-1-1-1': [15, 15, 0, 20]}
+        dmgmult = 4
+        self.combo_info = {'1': [15, 15, 15, 10*dmgmult], '11': [15, 15, 15, 10*dmgmult], '111': [30, 15, 15, 15*dmgmult],
+                           '1111': [15, 15, 0, 20*dmgmult], '-1': [15, 15, 15, 10*dmgmult], '-1-1': [15, 15, 15, 10*dmgmult],
+                           '-1-1-1': [30, 15, 15, 15*dmgmult],
+                           '-1-1-1-1': [15, 15, 0, 20*dmgmult]}
         self.enemygroup = ''
 
     def move(self, x, y):

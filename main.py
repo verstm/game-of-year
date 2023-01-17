@@ -14,6 +14,7 @@ from server import *
 from main_classes import *
 from characters import *
 from twisted.internet import protocol, reactor
+import playsound
 
 pygame.init()
 true_width, true_height = pygame.display.Info().current_w, pygame.display.Info().current_h
@@ -97,6 +98,13 @@ class Main:
         self.camera = Camera(WIDTH, HEIGHT, self)
         self.pers1 = Human(WIDTH, HEIGHT, self, screen, FPS)
         self.pers2 = Human(WIDTH, HEIGHT, self, screen, FPS)
+        self.mortis = pygame.sprite.Sprite()
+        self.mortis.image = pygame.image.load(ASSETS_PATH + 'Sprites/mortis.jpg')
+        self.mortis.rect = self.mortis.image.get_rect()
+        self.mortis.image = pygame.transform.scale(self.mortis.image, (WIDTH, HEIGHT))
+        self.mortis.rect.x, self.mortis.rect.y = 0, 0
+        self.mrgroup = pygame.sprite.Group()
+        self.mrgroup.add(self.mortis)
         self.pers2.main_chr = 0
         self.pers2.rect.x, self.pers2.rect.y = self.pers1.truecords
         self.gui = GUI(self.pers1, self.pers2, WIDTH, HEIGHT, screen)
@@ -110,6 +118,7 @@ class Main:
         self.HEIGHT = HEIGHT
         self.screen = screen
         self.FPS = FPS
+        self.deathflg = 0
 
     def update(self):
         self.events = []
@@ -117,7 +126,6 @@ class Main:
             self.mode, self.pers1 = self.menu.update()
             if self.mode == 2:
                 self.gui = GUI(self.pers1, self.pers2, self.WIDTH, self.HEIGHT, self.screen)
-                self.mode += 1
             self.set_enemies()
         if self.mode == 2:
             self.map.update()
@@ -125,6 +133,10 @@ class Main:
             self.pers1.update()
             self.pers2.update()
             self.gui.update(self.pers1, self.pers2)
+            if self.pers1.HP <= 0:
+                self.mode = 4
+            if self.pers2.HP <= 0:
+                self.mode = 4
         if self.mode == 3:
             if self.connected and self.pack:
                 self.check_pack()
@@ -154,7 +166,11 @@ class Main:
             # self.pers1.HP -= 1
             # self.pers2.HP -= 1
         if self.mode == 4:
-            print('GAME OVER!!!')
+            if not self.deathflg:
+                pygame.mixer.music.load(ASSETS_PATH + 'mortis.mp3')
+                pygame.mixer.music.play()
+                self.deathflg = 1
+            self.mrgroup.draw(screen)
         self.info = [self.pers1.info]
 
     def check_pack(self):
