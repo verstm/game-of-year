@@ -229,11 +229,13 @@ class Pawn:
         self.move(int(self.horizontal_speed), int(self.vertical_speed))
         self.onfloor = self.bottom
         if self.onfloor:
+            # print('downed')
             self.grav_accel = G
             self.vertical_speed = 0
             self.horizontal_speed += (-self.horizontal_speed) / 5
         else:
             # self.grav_accel += G
+            # print('upned')
             self.vertical_speed += self.grav_accel
         self.horizontal_speed = 0 if abs(self.horizontal_speed) < 1 else self.horizontal_speed
         self.vertical_speed = 0 if abs(self.vertical_speed) < 1 else self.vertical_speed
@@ -328,7 +330,7 @@ class Human(Pawn, pygame.sprite.Sprite):
         if self.main_chr:
             self.events_check()
         else:
-            print(self.combo)
+            ...
         self.control(self.keys, self.mouse_arr)
         self.stun_update()
         if self.alpha != None:

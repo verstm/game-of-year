@@ -38,7 +38,7 @@ class EchoServer(protocol.Protocol):
         game.pack = recv_pack
         send_pack = game.info
         self.transport.write(str(send_pack).encode())
-        #clock.tick(FPS)
+        # clock.tick(FPS)
 
     def connectionLost(self, reason):
         game.connected = 0
@@ -128,8 +128,17 @@ class Main:
         if self.mode == 3:
             if self.connected and self.pack:
                 self.check_pack()
+                self.map.update()
+                self.camera.update()
+                self.pers1.update()
+                self.pers2.update()
+                self.gui.update(self.pers1, self.pers2)
+                if self.pers1.HP <= 0:
+                    self.mode = 4
+                if self.pers2.HP <= 0:
+                    self.mode = 4
             else:
-                ...
+                print('please wait')
             if self.host:
                 if not self.multiplayer_flg:
                     self.server_thread = threading.Thread(target=server)
@@ -141,15 +150,7 @@ class Main:
                     self.client_thread = threading.Thread(target=client, args=[opn[0]])
                     self.client_thread.start()
                     self.multiplayer_flg = 1
-            self.map.update()
-            self.camera.update()
-            self.pers1.update()
-            self.pers2.update()
-            self.gui.update(self.pers1, self.pers2)
-            if self.pers1.HP <= 0:
-                self.mode = 4
-            if self.pers2.HP <= 0:
-                self.mode = 4
+
             # self.pers1.HP -= 1
             # self.pers2.HP -= 1
         if self.mode == 4:
