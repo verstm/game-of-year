@@ -158,10 +158,15 @@ class Main:
                     self.multiplayer_flg = 1
             else:
                 if not self.multiplayer_flg:
-                    opn = scan_lan(8080)
-                    self.client_thread = threading.Thread(target=client, args=[opn[0]])
-                    self.client_thread.start()
-                    self.multiplayer_flg = 1
+                    try:
+                        opn = scan_lan(8080)
+                        print('Найденные сервера:', *opn, sep='\n')
+                        p = input('Введите ip сервера: ')
+                        self.client_thread = threading.Thread(target=client, args=[p])
+                        self.client_thread.start()
+                        self.multiplayer_flg = 1
+                    except:
+                        print('Connection Error')
 
             # self.pers1.HP -= 1
             # self.pers2.HP -= 1
